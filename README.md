@@ -4,6 +4,39 @@
 
 ---
 
+## File Naming Convention
+
+Files follow a `verb_noun.sh` pattern in **snake_case**:
+
+- `tell_*` — scripts that display or report information
+- `generate_*` — scripts that produce or create output
+
+### Examples
+
+| File | Verb | Purpose |
+|------|------|---------|
+| `tell_ai_tools.sh` | tell | Report installed SaaS AI tools |
+| `tell_casks.sh` | tell | Report installed Homebrew casks |
+| `tell_rcs.sh` | tell | Report shell RC files |
+| `tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
+| `generate_cask-aliases.sh` | generate | Create shell aliases for casks |
+
+### Rules
+
+- Use a verb prefix that describes what the script does (`tell`, `generate`)
+- Separate words with underscores (snake_case)
+- Use the `.sh` extension for all shell scripts
+
+---
+
+## Docs
+
+| File | Purpose |
+|------|---------|
+| [ARCHITECTURE.md](./resources/docs/ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
+| [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
+| [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
+
 ## Scripts
 
 ### `tell_ai_tools.sh`
@@ -62,36 +95,3 @@ bash generate_cask-aliases.sh
 ```
 
 ---
-
-## File Naming Convention
-
-Files follow a `verb_noun.sh` pattern in **snake_case**:
-
-- `tell_*` — scripts that display or report information
-- `generate_*` — scripts that produce or create output
-
-### Examples
-
-| File | Verb | Purpose |
-|------|------|---------|
-| `tell_ai_tools.sh` | tell | Report installed SaaS AI tools |
-| `tell_casks.sh` | tell | Report installed Homebrew casks |
-| `tell_rcs.sh` | tell | Report shell RC files |
-| `tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
-| `generate_cask-aliases.sh` | generate | Create shell aliases for casks |
-
-### Rules
-
-- Use a verb prefix that describes what the script does (`tell`, `generate`)
-- Separate words with underscores (snake_case)
-- Use the `.sh` extension for all shell scripts
-
----
-
-## Docs
-
-| File | Purpose |
-|------|---------|
-| [ARCHITECTURE.md](./resources/docs/ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
-| [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
-| [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
