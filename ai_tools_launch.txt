@@ -2,33 +2,34 @@
 # Lookup file: how to open each SaaS AI tool from the command line
 # Format:  TOOL_NAME | LAUNCH_COMMAND
 # Lines starting with # are comments
+# Verified March 2026
 #
 # ── Web Interfaces (Desktop Apps) ──────────────────────────
-claude.ai (Anthropic)          | open -a Claude
-ChatGPT (OpenAI)               | open -a ChatGPT
-Gemini (Google)                | open -a 'Google Gemini'  # or: open https://gemini.google.com
-Grok (xAI)                    | open -a Grok             # or: open https://grok.com
+claude.ai (Anthropic)          | open -a Claude                                          # or: open https://claude.ai
+ChatGPT (OpenAI)               | open -a ChatGPT                                         # or: open https://chatgpt.com
+Gemini (Google)                | open -a 'Google Gemini'                                 # or: open https://gemini.google.com
+Grok (xAI)                    | open -a Grok                                            # or: open https://grok.com
 #
 # ── AI-Powered IDEs ────────────────────────────────────────
-Cursor                         | open -a Cursor           # or: cursor .
-Windsurf                       | open -a Windsurf
-Zed                            | open -a Zed              # or: zed .
+Cursor                         | cursor .                                                # opens IDE in current dir; also: open -a Cursor
+Windsurf                       | windsurf .                                              # opens IDE in current dir; also: open -a Windsurf
+Zed                            | zed .                                                   # opens IDE in current dir; also: open -a Zed
 #
 # ── CLI / Terminal Agents ──────────────────────────────────
-Claude Code (Anthropic)        | claude
-Cursor CLI                     | cursor .                 # open current dir in Cursor
+Claude Code (Anthropic)        | claude                                                  # starts interactive agent session
+Cursor CLI                     | agent                                                   # or: agent chat "your prompt"; install: curl https://cursor.com/install -fsSL | bash
 GitHub Copilot CLI             | github-copilot-cli
-GitHub CLI (Copilot extension) | gh copilot suggest       # or: gh copilot explain
-GitHub Copilot (gh extension)  | gh copilot suggest       # or: gh copilot explain
-Gemini CLI (Google)            | gemini
-Codex CLI (OpenAI)             | codex
-OpenCode                       | opencode
-Aider                          | aider                    # run in a git repo
+GitHub CLI (Copilot extension) | gh copilot suggest                                      # or: gh copilot explain
+GitHub Copilot (gh extension)  | gh copilot suggest                                      # or: gh copilot explain
+Gemini CLI (Google)            | gemini                                                  # starts interactive session; also: gemini -p "prompt" for one-shot
+Codex CLI (OpenAI)             | codex                                                   # starts interactive TUI; also: codex exec "prompt" for non-interactive
+OpenCode                       | opencode                                                # starts interactive TUI; also: opencode run "prompt" for one-shot
+Aider                          | aider                                                   # run in a git repo; also: aider --model sonnet
 #
 # ── VS Code / IDE Extensions ──────────────────────────────
-GitHub Copilot                 | code .                   # Copilot activates in editor
-GitHub Copilot Chat            | code .                   # Chat panel: Ctrl+Shift+I
-Cline                          | code .                   # Cline panel: Cmd+Shift+P → Cline
+GitHub Copilot                 | code .                                                  # Copilot activates automatically in editor
+GitHub Copilot Chat            | code .                                                  # Chat panel: Cmd+Shift+I (macOS) / Ctrl+Shift+I
+Cline                          | code .                                                  # Cline panel: Cmd+Shift+P → "Cline"
 #
 # ── SaaS Provider SDKs (Python) ───────────────────────────
 OpenAI Python SDK              | python3 -c 'import openai; print(openai.__version__)'

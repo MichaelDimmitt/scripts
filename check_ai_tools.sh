@@ -3,7 +3,12 @@
 #  SaaS AI Tools Detector for macOS
 #  Based on: github.com/MichaelDimmitt/319c8176034c999907b0c957cf71159a
 #  Scans for Web Interfaces, AI IDEs, CLI Agents, SDKs & Extensions
+#
+#  Requires: ai_tools_launch.txt (lookup file) in the same directory
 # ============================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAUNCH_FILE="${SCRIPT_DIR}/ai_tools_launch.txt"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -27,7 +32,7 @@ check_found() {
     local name="$1"
     local detail="$2"
     echo -e "  ${GREEN}✔ ${BOLD}$name${NC}  ${detail}"
-    found_items+=("$name${detail:+  $detail}")
+    found_items+=("$name")
     ((found_count++))
 }
 
@@ -55,7 +60,6 @@ seen_gemini=0
 for entry in "${web_apps[@]}"; do
     app_name="${entry%%:*}"
     display_name="${entry##*:}"
-    # Deduplicate Gemini (two possible app names, one display entry)
     if [[ "$display_name" == *"Gemini"* ]]; then
         [[ $seen_gemini -eq 1 ]] && continue
     fi
@@ -110,7 +114,7 @@ print_header "CLI / Terminal Agents"
 
 declare -a cli_tools=(
     "claude:Claude Code (Anthropic)"
-    "cursor:Cursor CLI"
+    "agent:Cursor CLI"
     "github-copilot-cli:GitHub Copilot CLI"
     "gh:GitHub CLI (Copilot extension)"
     "gemini:Gemini CLI (Google)"
@@ -173,7 +177,6 @@ fi
 
 # ----------------------------------------------------------
 #  5. SaaS Provider SDKs (Python)
-#     API clients for cloud model providers
 # ----------------------------------------------------------
 print_header "SaaS Provider SDKs (Python)"
 
@@ -263,9 +266,17 @@ fi
 echo ""
 
 # ----------------------------------------------------------
-#  Quick-Reference: Installed SaaS AI Tools Only
+#  Merge: grep found tools against the lookup file
+#  Shows each installed tool + how to open it
 # ----------------------------------------------------------
-if [[ ${#found_items[@]} -gt 0 ]]; then
+if [[ ${#found_items[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+if [[ ! -f "$LAUNCH_FILE" ]]; then
+    echo -e "  ${YELLOW}⚠  Lookup file not found: ${LAUNCH_FILE}${NC}"
+    echo -e "  ${YELLOW}   Place ai_tools_launch.txt next to this script.${NC}"
+    echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}  INSTALLED SAAS AI TOOLS${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -273,4 +284,31 @@ if [[ ${#found_items[@]} -gt 0 ]]; then
         echo -e "  ${GREEN}✔${NC} ${item}"
     done
     echo ""
+    exit 0
 fi
+
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}  INSTALLED TOOLS & HOW TO OPEN${NC}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+for tool_name in "${found_items[@]}"; do
+    # grep the lookup file for a line starting with this tool name
+    # use fixed-string match on the portion before the pipe
+    match=$(grep -v '^#' "$LAUNCH_FILE" | grep -F "$tool_name" | head -1)
+
+    if [[ -n "$match" ]]; then
+        # split on first pipe: left = name (ignored, we have it), right = command
+        launch_cmd="${match#*| }"
+        # trim leading whitespace from command
+        launch_cmd="${launch_cmd#"${launch_cmd%%[![:space:]]*}"}"
+        printf "  ${GREEN}✔${NC} ${BOLD}%-34s${NC} ${YELLOW}→${NC}  %s\n" "$tool_name" "$launch_cmd"
+    else
+        # tool found but no launch entry in lookup file
+        printf "  ${GREEN}✔${NC} ${BOLD}%-34s${NC} ${RED}(no launch command in lookup file)${NC}\n" "$tool_name"
+    fi
+done
+
+echo ""
+echo -e "  ${CYAN}Lookup file:${NC} ${LAUNCH_FILE}"
+echo -e "  ${CYAN}Edit it to add or change launch commands.${NC}"
+echo ""
