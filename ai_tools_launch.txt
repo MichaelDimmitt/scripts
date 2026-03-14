@@ -1,0 +1,42 @@
+# ai_tools_launch.txt
+# Lookup file: how to open each SaaS AI tool from the command line
+# Format:  TOOL_NAME | LAUNCH_COMMAND
+# Lines starting with # are comments
+#
+# ── Web Interfaces (Desktop Apps) ──────────────────────────
+claude.ai (Anthropic)          | open -a Claude
+ChatGPT (OpenAI)               | open -a ChatGPT
+Gemini (Google)                | open -a 'Google Gemini'  # or: open https://gemini.google.com
+Grok (xAI)                    | open -a Grok             # or: open https://grok.com
+#
+# ── AI-Powered IDEs ────────────────────────────────────────
+Cursor                         | open -a Cursor           # or: cursor .
+Windsurf                       | open -a Windsurf
+Zed                            | open -a Zed              # or: zed .
+#
+# ── CLI / Terminal Agents ──────────────────────────────────
+Claude Code (Anthropic)        | claude
+Cursor CLI                     | cursor .                 # open current dir in Cursor
+GitHub Copilot CLI             | github-copilot-cli
+GitHub CLI (Copilot extension) | gh copilot suggest       # or: gh copilot explain
+GitHub Copilot (gh extension)  | gh copilot suggest       # or: gh copilot explain
+Gemini CLI (Google)            | gemini
+Codex CLI (OpenAI)             | codex
+OpenCode                       | opencode
+Aider                          | aider                    # run in a git repo
+#
+# ── VS Code / IDE Extensions ──────────────────────────────
+GitHub Copilot                 | code .                   # Copilot activates in editor
+GitHub Copilot Chat            | code .                   # Chat panel: Ctrl+Shift+I
+Cline                          | code .                   # Cline panel: Cmd+Shift+P → Cline
+#
+# ── SaaS Provider SDKs (Python) ───────────────────────────
+OpenAI Python SDK              | python3 -c 'import openai; print(openai.__version__)'
+Anthropic Python SDK           | python3 -c 'import anthropic; print(anthropic.__version__)'
+Google Generative AI SDK       | python3 -c 'import google.generativeai as genai; print(genai.__version__)'
+LangChain                      | python3 -c 'import langchain; print(langchain.__version__)'
+#
+# ── SaaS Provider SDKs (Node.js) ──────────────────────────
+Anthropic JS SDK               | node -e "console.log(require('@anthropic-ai/sdk/package.json').version)"
+OpenAI JS SDK                  | node -e "console.log(require('openai/package.json').version)"
+LangChain JS                   | node -e "console.log(require('langchain/package.json').version)"
