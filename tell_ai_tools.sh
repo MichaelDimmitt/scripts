@@ -4,11 +4,11 @@
 #  Based on: github.com/MichaelDimmitt/319c8176034c999907b0c957cf71159a
 #  Scans for Web Interfaces, AI IDEs, CLI Agents, SDKs & Extensions
 #
-#  Requires: ai_tools_launch.txt (lookup file) in the same directory
+#  Requires: resources/mappings/ai_tools_launch.txt (lookup file) relative to this script
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LAUNCH_FILE="${SCRIPT_DIR}/ai_tools_launch.txt"
+LAUNCH_FILE="${SCRIPT_DIR}/resources/mappings/ai_tools_launch.txt"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -275,7 +275,7 @@ fi
 
 if [[ ! -f "$LAUNCH_FILE" ]]; then
     echo -e "  ${YELLOW}⚠  Lookup file not found: ${LAUNCH_FILE}${NC}"
-    echo -e "  ${YELLOW}   Place ai_tools_launch.txt next to this script.${NC}"
+    echo -e "  ${YELLOW}   Place ai_tools_launch.txt in resources/mappings/ next to this script.${NC}"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BOLD}  INSTALLED SAAS AI TOOLS${NC}"
