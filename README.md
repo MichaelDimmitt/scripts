@@ -92,6 +92,6 @@ Files follow a `verb_noun.sh` pattern in **snake_case**:
 
 | File | Purpose |
 |------|---------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
-| [AGENT_GUIDE.md](./AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
-| [SKILLS_APPROACH.md](./SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
+| [ARCHITECTURE.md](./resources/docs/ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
+| [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
+| [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
