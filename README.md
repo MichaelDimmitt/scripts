@@ -37,6 +37,22 @@ Files follow a `verb_noun.sh` pattern in **snake_case**:
 | [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
 | [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
 
+## Extras
+
+Hand-maintained additions that layer on top of generated output.
+
+| File | Purpose |
+|------|---------|
+| [brew-cask-aliases-additional](./resources/extras/brew-cask-aliases-additional) | Extra shell aliases to source alongside `~/.brew-cask-aliases` |
+
+Source it from your RC file to keep these alongside the generated aliases:
+
+```sh
+source ~/scripts/resources/extras/brew-cask-aliases-additional
+```
+
+---
+
 ## Scripts
 
 ### `tell_ai_tools.sh`

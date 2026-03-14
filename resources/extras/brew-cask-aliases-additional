@@ -1,0 +1,3 @@
+# Resume Claude with permissions bypass enabled (toggle with Shift+Tab in Claude Code)
+# Use when you have safe tasks ahead (e.g. editing commits) and don't want constant permission prompts.
+alias cresume="claude -c --dangerously-skip-permissions"

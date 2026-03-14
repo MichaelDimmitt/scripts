@@ -33,6 +33,17 @@ scripts/
 ### Folders
 - Lowercase, singular nouns
 
+## Comment Style
+
+Order comments mechanic-first, use-case second:
+
+```sh
+# What it does / how it works
+# When to use it
+```
+
+Leading with the functional description lets a skimmer get the "what" immediately, with context following as a second line.
+
 ## Adding a New Script
 
 1. Pick a verb that describes what it does (`tell`, `generate`, etc.)
