@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Shell
+*.swp
+*.swo
+*~
+
+# Generated output
+~/.brew-cask-aliases
+
+# Secrets / env
+.env
+.env.*
+
+# Editor
+.vscode/
+.idea/
+*.code-workspace
