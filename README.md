@@ -88,6 +88,10 @@ Files follow a `verb_noun.sh` pattern in **snake_case**:
 
 ---
 
-## Project Structure
+## Docs
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for full folder structure and conventions.
+| File | Purpose |
+|------|---------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
+| [AGENT_GUIDE.md](./AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
+| [SKILLS_APPROACH.md](./SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
