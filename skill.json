@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "prompt",
+        "matcher": "Edit|Write",
+        "timeout": 30,
+        "command": "You are a strict architecture gatekeeper. Evaluate the code Claude is about to write based on this checklist: 1. If the code involves time, scheduling, or dates, it MUST use the Temporal API (no legacy Date objects). 2. If the code involves frontend UI, it MUST use React, TypeScript, and MUI v5 components (no raw HTML tags for layout). If the proposed code violates these rules, reject the action and instruct the agent to read the `temporal-api-standard` or `mui-react-generator` skill."
+      }
+    ]
+  }
+}
