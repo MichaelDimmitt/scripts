@@ -1,0 +1,5 @@
+#!/bin/bash
+git fetch --all
+LATEST=$(git branch -r | grep -E 'origin/release/[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | tr -d ' ' | sed 's/origin\///')
+echo "Checking out: $LATEST"
+git checkout "$LATEST"

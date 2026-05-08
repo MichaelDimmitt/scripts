@@ -19,7 +19,8 @@ Files follow a `verb_noun.sh` pattern in **snake_case**:
 | `tell_casks.sh` | tell | Report installed Homebrew casks |
 | `tell_rcs.sh` | tell | Report shell RC files |
 | `tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
-| `generate_cask-aliases.sh` | generate | Create shell aliases for casks |
+| `generate_cask-aliases.sh` | generate | Create shell aliases for casks, install latest_release |
+| `latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
 
@@ -104,10 +105,31 @@ bash tell_skills.sh
 ---
 
 ### `generate_cask-aliases.sh`
-Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from `~/.bashrc`. Re-run whenever you install or remove casks.
+Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from `~/.bashrc`. Also installs `latest_release`, adds the `git checkout-release` alias, and wires up the `git checkout release` shell intercept. Re-run whenever you install or remove casks, or on a fresh clone.
 
 ```sh
 bash generate_cask-aliases.sh
+```
+
+---
+
+### `latest_release`
+Checks out the highest versioned `release/X.Y.Z` branch in the current repo. Fetches all remotes, filters to branches matching the `release/#.##.##` pattern, version-sorts them, and checks out the latest. Branches with non-version suffixes (e.g. `release/vite-config-updates`) are ignored.
+
+**Three ways to invoke:**
+
+```sh
+latest_release                # direct
+git checkout-release          # git alias
+git checkout release          # shell function intercept (also matches release/ or release/anything)
+```
+
+**Install on a new machine:**
+
+```sh
+# clone the repo, then:
+bash generate_cask-aliases.sh
+source ~/.bashrc
 ```
 
 ---
