@@ -6,27 +6,31 @@
 
 ## File Naming Convention
 
-Files follow a `verb_noun.sh` pattern in **snake_case**:
+Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by verb:
 
-- `tell_*` — scripts that display or report information
-- `generate_*` — scripts that produce or create output
+- `tell/` — scripts that display or report information
+- `generate/` — scripts that produce or create output
+- `install/` — scripts that set up tooling or wire up shell integrations
+- `bin/` — standalone executables (no verb prefix)
 
 ### Examples
 
 | File | Verb | Purpose |
 |------|------|---------|
-| `tell_ai_tools.sh` | tell | Report installed SaaS AI tools |
-| `tell_casks.sh` | tell | Report installed Homebrew casks |
-| `tell_rcs.sh` | tell | Report shell RC files |
-| `tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
-| `generate_cask-aliases.sh` | generate | Create shell aliases for casks, install latest_release |
-| `latest_release` | — | Checkout the highest versioned release branch |
+| `tell/tell_ai_tools.sh` | tell | Report installed SaaS AI tools |
+| `tell/tell_casks.sh` | tell | Report installed Homebrew casks |
+| `tell/tell_rcs.sh` | tell | Report shell RC files |
+| `tell/tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
+| `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
+| `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
+| `bin/latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
 
-- Use a verb prefix that describes what the script does (`tell`, `generate`)
+- Use a verb prefix that describes what the script does (`tell`, `generate`, `install`)
 - Separate words with underscores (snake_case)
 - Use the `.sh` extension for all shell scripts
+- Place the script in the folder matching its verb
 
 ---
 
@@ -46,6 +50,8 @@ Hand-maintained additions that layer on top of generated output.
 |------|---------|
 | [brew-cask-aliases-additional](./resources/extras/brew-cask-aliases-additional) | Extra shell aliases to source alongside `~/.brew-cask-aliases` |
 | [statusline-command.sh](./resources/extras/statusline-command.sh) | Claude Code status line script that mirrors a bash PS1 (cwd, short SHA, branch in cyan) and adds model, context window usage, and rate-limit percentages |
+| [stashes.sh](./resources/extras/stashes.sh) | Shell functions `dump_stashes` and `dump_stashes_files` for exporting a range of git stashes to a text file |
+| [text-manipulation.sh](./resources/extras/text-manipulation.sh) | Shell utility functions for common text transformations |
 
 Source it from your RC file to keep these alongside the generated aliases:
 
@@ -80,7 +86,7 @@ Then add this to `~/.claude/settings.json`:
 
 ## Scripts
 
-### `tell_ai_tools.sh`
+### `tell/tell_ai_tools.sh`
 Scans your machine for installed SaaS AI tools and reports what it finds, grouped by category. Prints a summary with found/not-found counts, then for every installed tool shows the command to launch it.
 
 **Detects:**
@@ -94,56 +100,66 @@ Scans your machine for installed SaaS AI tools and reports what it finds, groupe
 **Requires:** `resources/mappings/ai_tools_launch.txt` (included)
 
 ```sh
-bash tell_ai_tools.sh
+bash tell/tell_ai_tools.sh
 ```
 
 ---
 
-### `tell_casks.sh`
+### `tell/tell_casks.sh`
 Lists all installed Homebrew casks split into two groups: casks that expose a binary in `/bin/` or `/sbin/`, and those that don't. Useful for auditing what CLI tools your GUI apps quietly ship.
 
 ```sh
-bash tell_casks.sh
+bash tell/tell_casks.sh
 ```
 
 ---
 
-### `tell_rcs.sh`
+### `tell/tell_rcs.sh`
 Detects your current shell and prints the relevant RC and profile files for it (e.g. `~/.zshrc`, `~/.zprofile`). Also shows which of those files actually exist on disk.
 
 ```sh
-bash tell_rcs.sh
+bash tell/tell_rcs.sh
 ```
 
 ---
 
-### `tell_skills.sh`
+### `tell/tell_skills.sh`
 Reports on git-cloned skill repos under `~/skills`. Shows remote URL, current branch, last commit, whether the repo is up to date vs origin, and a list of available skills. Handles both a single repo at `~/skills/` and a directory of multiple repos.
 
 If `~/skills` doesn't exist, prompts you to clone [anthropics/skills](https://github.com/anthropics/skills) automatically.
 
 ```sh
-bash tell_skills.sh
+bash tell/tell_skills.sh
 ```
 
 ---
 
-### `generate_cask-aliases.sh`
-Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from `~/.bashrc`. Also installs `latest_release`, adds the `git checkout-release` alias, and wires up the `git checkout release` shell intercept. Re-run whenever you install or remove casks, or on a fresh clone.
+### `install/install_checkout_release.sh`
+Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in `~/.bashrc`, registers the `git checkout-release` alias, and installs the `git checkout release*` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
 
 ```sh
-bash generate_cask-aliases.sh
+bash install/install_checkout_release.sh
+source ~/.bashrc
 ```
 
 ---
 
-### `latest_release`
+### `generate/generate_cask-aliases.sh`
+Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from `~/.bashrc`. Re-run whenever you install or remove casks, or on a fresh clone.
+
+```sh
+bash generate/generate_cask-aliases.sh
+```
+
+---
+
+### `bin/latest_release`
 Checks out the highest versioned `release/X.Y.Z` branch in the current repo. Fetches all remotes, filters to branches matching the `release/#.##.##` pattern, version-sorts them, and checks out the latest. Branches with non-version suffixes (e.g. `release/vite-config-updates`) are ignored.
 
 **Three ways to invoke:**
 
 ```sh
-latest_release                # direct
+latest_release                # direct (after install)
 git checkout-release          # git alias
 git checkout release          # shell function intercept (also matches release/ or release/anything)
 ```
@@ -152,7 +168,7 @@ git checkout release          # shell function intercept (also matches release/ 
 
 ```sh
 # clone the repo, then:
-bash generate_cask-aliases.sh
+bash install/install_checkout_release.sh
 source ~/.bashrc
 ```
 

@@ -8,7 +8,7 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LAUNCH_FILE="${SCRIPT_DIR}/resources/mappings/ai_tools_launch.txt"
+LAUNCH_FILE="${SCRIPT_DIR}/../resources/mappings/ai_tools_launch.txt"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

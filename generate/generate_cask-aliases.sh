@@ -8,5 +8,5 @@ done > ~/.brew-cask-aliases
 
 sed -i '' '/source ~\/.brew-cask-aliases/d' ~/.bashrc
 echo 'source ~/.brew-cask-aliases' >> ~/.bashrc
-cp resources/extras/brew-cask-aliases-additional ~/.brew-cask-aliases-additional
+cp "$(dirname "$0")/../resources/extras/brew-cask-aliases-additional" ~/.brew-cask-aliases-additional
 echo 'source ~/.brew-cask-aliases-additional' >> ~/.bashrc
