@@ -11,11 +11,11 @@ fi
 # Git info (skip optional locks to avoid contention)
 sha="no git"
 branch="detected"
-if git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  sha=$(git -C "$cwd" rev-parse HEAD 2>/dev/null | cut -c -9)
-  branch=$(git -C "$cwd" branch 2>/dev/null | grep "^\*" | cut -c 3-)
+if git -C "$cwd" --no-optional-locks rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  sha=$(git -C "$cwd" --no-optional-locks rev-parse HEAD 2>/dev/null | cut -c -9)
+  branch=$(git -C "$cwd" --no-optional-locks symbolic-ref --short HEAD 2>/dev/null)
   [ -z "$sha" ] && sha="no git"
-  [ -z "$branch" ] && branch="detected"
+  [ -z "$branch" ] && branch="detached"
 fi
 
 # ANSI cyan color (matches \e[1;36m from original PS1)
