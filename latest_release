@@ -1,6 +1,10 @@
 #!/bin/bash
 git fetch --all
 LATEST=$(git branch -r | grep -E 'origin/release/[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | tr -d ' ' | sed 's/origin\///')
+if [[ -z "$LATEST" ]]; then
+  echo "No release/X.Y.Z branches found."
+  exit 1
+fi
 echo "Checking out: $LATEST"
 git checkout "$LATEST"
 git pull
