@@ -45,11 +45,35 @@ Hand-maintained additions that layer on top of generated output.
 | File | Purpose |
 |------|---------|
 | [brew-cask-aliases-additional](./resources/extras/brew-cask-aliases-additional) | Extra shell aliases to source alongside `~/.brew-cask-aliases` |
+| [statusline-command.sh](./resources/extras/statusline-command.sh) | Claude Code status line script that mirrors a bash PS1 (cwd, short SHA, branch in cyan) and adds model, context window usage, and rate-limit percentages |
 
 Source it from your RC file to keep these alongside the generated aliases:
 
 ```sh
 source ~/scripts/resources/extras/brew-cask-aliases-additional
+```
+
+### Claude Code status line
+
+To install the status line on a new machine, tell Claude:
+
+> Use the `statusline-setup` agent to configure my statusLine from `~/scripts/resources/extras/statusline-command.sh`.
+
+Or do it manually:
+
+```sh
+cp ~/scripts/resources/extras/statusline-command.sh ~/.claude/statusline-command.sh
+```
+
+Then add this to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/<you>/.claude/statusline-command.sh"
+  }
+}
 ```
 
 ---
