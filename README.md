@@ -62,6 +62,7 @@ Hand-maintained additions that layer on top of generated output.
 |------|---------|
 | [brew-cask-aliases-additional](./resources/extras/brew-cask-aliases-additional) | Extra shell aliases to source alongside `~/.brew-cask-aliases` |
 | [statusline-command.sh](./resources/extras/statusline-command.sh) | Claude Code status line script that mirrors a bash PS1 (cwd, short SHA, branch in cyan) and adds model, context window usage, and rate-limit percentages |
+| [statusline-setup.md](./resources/extras/statusline-setup.md) | Setup guide for the status line — includes a no-clone install path using `curl` |
 | [stashes.sh](./resources/extras/stashes.sh) | Shell functions `dump_stashes` and `dump_stashes_files` for exporting a range of git stashes to a text file |
 | [text-manipulation.sh](./resources/extras/text-manipulation.sh) | Shell utility functions for common text transformations |
 
@@ -72,6 +73,8 @@ source ~/scripts/resources/extras/brew-cask-aliases-additional
 ```
 
 ### Claude Code status line
+
+See [statusline-setup.md](./resources/extras/statusline-setup.md) for the full setup guide, including a no-clone install path.
 
 To install the status line on a new machine, tell Claude:
 
