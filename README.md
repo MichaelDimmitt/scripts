@@ -32,6 +32,18 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 - Use the `.sh` extension for all shell scripts
 - Place the script in the folder matching its verb
 
+## Usage
+
+Requires [`just`](https://github.com/casey/just): `brew install just`
+
+```sh
+just                        # list all commands
+just tell-casks
+just tell-ai-tools
+just generate-cask-aliases
+just install-checkout-release
+```
+
 ---
 
 ## Docs
