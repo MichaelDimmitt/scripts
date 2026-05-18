@@ -77,6 +77,11 @@ To install the status line on a new machine, tell Claude:
 
 > Use the `statusline-setup` agent to configure my statusLine from `~/scripts/resources/extras/statusline-command.sh`.
 
+> **Note:** After cloning, make the script executable or the statusline will silently not appear:
+> ```sh
+> chmod +x ~/scripts/resources/extras/statusline-command.sh
+> ```
+
 Or do it manually:
 
 ```sh
