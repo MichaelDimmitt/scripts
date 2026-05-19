@@ -155,7 +155,7 @@ bash tell/tell_skills.sh
 ---
 
 ### `install/install_checkout_release.sh`
-Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in `~/.bashrc`, registers the `git checkout-release` alias, and installs the `git checkout release*` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
+Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in `~/.bashrc`, registers the `git checkout-release` alias, and installs the `git checkout release` / `git checkout release/` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
 
 ```sh
 bash install/install_checkout_release.sh
@@ -181,7 +181,7 @@ Checks out the highest versioned `release/X.Y.Z` branch in the current repo. Fet
 ```sh
 latest_release                # direct (after install)
 git checkout-release          # git alias
-git checkout release          # shell function intercept (also matches release/ or release/anything)
+git checkout release          # shell function intercept (also matches release/; release/X.Y.Z passes through to git)
 ```
 
 **Install on a new machine:**

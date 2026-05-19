@@ -16,7 +16,7 @@ if ! grep -q 'latest_release' ~/.bashrc; then
   cat >> ~/.bashrc << 'EOF'
 
 git() {
-  if [[ "$1" == "checkout" && "$2" == release* ]]; then
+  if [[ "$1" == "checkout" && ( "$2" == "release" || "$2" == "release/" ) ]]; then
     latest_release
   else
     command git "$@"
