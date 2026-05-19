@@ -41,20 +41,28 @@ echo "==> Setting git alias checkout-release"
 git config --global alias.checkout-release '!latest_release'
 echo "    $(git config --global --get alias.checkout-release)"
 
-if ! grep -q 'latest_release' ~/.bashrc; then
-  echo "==> Adding git() shell function to ~/.bashrc"
-  cat >> ~/.bashrc << 'EOF'
-
-git() {
+GIT_FUNC='git() {
   if [[ "$1" == "checkout" && ( "$2" == "release" || "$2" == "release/" ) ]]; then
     latest_release
   else
     command git "$@"
   fi
-}
-EOF
+}'
+
+if grep -q 'latest_release' ~/.bashrc; then
+  echo "==> Replacing existing git() shell function in ~/.bashrc"
+  # Remove the old function block and write the current one in its place
+  awk '
+    /^git\(\)/ { skip=1; next }
+    skip && /^\}/ { skip=0; next }
+    skip { next }
+    { print }
+  ' ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
+  echo "$GIT_FUNC" >> ~/.bashrc
+  echo "    OK: git() function replaced"
 else
-  echo "==> SKIP: ~/.bashrc already contains latest_release git() function"
+  echo "==> Adding git() shell function to ~/.bashrc"
+  printf '\n%s\n' "$GIT_FUNC" >> ~/.bashrc
 fi
 
 echo ""
