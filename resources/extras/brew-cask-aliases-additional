@@ -1,3 +1,24 @@
 # Resume Claude with permissions bypass enabled (toggle with Shift+Tab in Claude Code)
 # Use when you have safe tasks ahead (e.g. editing commits) and don't want constant permission prompts.
 alias cresume="claude -c --dangerously-skip-permissions"
+
+# List previous Claude Code sessions in the current project (newest first)
+alias cchats='ls -lt ~/.claude/projects/"$(pwd | sed "s:/:-:g")"/'
+
+# Resume a specific Claude Code session by ID (or .jsonl filename) with permissions bypass.
+# Usage: cresumef <session-id>   — IDs come from `cchats`.
+cresumef() {
+    if [ -z "$1" ]; then
+        echo "usage: cresumef <session-id>" >&2
+        return 1
+    fi
+    claude -r "${1%.jsonl}" --dangerously-skip-permissions
+}
+
+# Regenerate cask aliases and re-source them in the current shell.
+regen-aliases() {
+    bash ~/scripts/generate/generate_cask-aliases.sh && \
+    source ~/.brew-cask-aliases && \
+    source ~/.brew-cask-aliases-additional && \
+    echo "aliases reloaded"
+}

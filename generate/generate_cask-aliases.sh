@@ -10,3 +10,8 @@ sed -i '' '/source ~\/.brew-cask-aliases/d' ~/.bashrc
 echo 'source ~/.brew-cask-aliases' >> ~/.bashrc
 cp "$(dirname "$0")/../resources/extras/brew-cask-aliases-additional" ~/.brew-cask-aliases-additional
 echo 'source ~/.brew-cask-aliases-additional' >> ~/.bashrc
+
+echo ""
+echo "Aliases written. To activate in the CURRENT shell, run:"
+echo "  source ~/.brew-cask-aliases"
+echo "  source ~/.brew-cask-aliases-additional"
