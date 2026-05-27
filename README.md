@@ -72,6 +72,15 @@ Source it from your RC file to keep these alongside the generated aliases:
 source ~/scripts/resources/extras/brew-cask-aliases-additional
 ```
 
+#### What's in `brew-cask-aliases-additional`
+
+| Name | Type | Purpose |
+|------|------|---------|
+| `cresume` | alias | Resume the most recent Claude Code session with `--dangerously-skip-permissions` |
+| `cchats` | alias | List previous Claude Code sessions for the current project (newest first) |
+| `cresumef <session-id>` | function | Resume a specific Claude Code session by ID (IDs come from `cchats`) with permissions bypass |
+| `regen-aliases` | function | Re-run `generate_cask-aliases.sh` and re-source both alias files in the current shell |
+
 ### Claude Code status line
 
 See [statusline-setup.md](./resources/extras/statusline-setup.md) for the full setup guide, including a no-clone install path.
