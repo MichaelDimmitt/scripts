@@ -1,0 +1,26 @@
+{
+  "_comment": "used_percentage present but context_window_size absent. The old script divided by zero here and rendered '47k/0k'.",
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "context_window": {
+    "used_percentage": 23,
+    "current_usage": {
+      "input_tokens": 40000,
+      "output_tokens": 1000,
+      "cache_creation_input_tokens": 4000,
+      "cache_read_input_tokens": 3000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 10,
+      "resets_at": 1785312000
+    }
+  }
+}

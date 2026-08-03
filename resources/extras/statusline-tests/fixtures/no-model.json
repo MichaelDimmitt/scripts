@@ -1,0 +1,27 @@
+{
+  "_comment": "No model block, and a long path to exercise COLUMNS-aware truncation.",
+  "cwd": "/Users/example/projects/deeply/nested/monorepo/packages/services/api-gateway",
+  "workspace": {
+    "current_dir": "/Users/example/projects/deeply/nested/monorepo/packages/services/api-gateway"
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 55,
+    "current_usage": {
+      "input_tokens": 100000,
+      "output_tokens": 1500,
+      "cache_creation_input_tokens": 6000,
+      "cache_read_input_tokens": 4000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 60,
+      "resets_at": 1785312000
+    },
+    "seven_day": {
+      "used_percentage": 30,
+      "resets_at": 1785398400
+    }
+  }
+}

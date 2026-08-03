@@ -1,0 +1,23 @@
+{
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-sonnet-5",
+    "display_name": "Sonnet"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "cost": {
+    "total_cost_usd": 0.5
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 12,
+    "current_usage": {
+      "input_tokens": 20000,
+      "output_tokens": 800,
+      "cache_creation_input_tokens": 2000,
+      "cache_read_input_tokens": 2000
+    }
+  }
+}

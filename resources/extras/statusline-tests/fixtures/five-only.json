@@ -1,0 +1,27 @@
+{
+  "_comment": "Each rate-limit window may be independently absent; only five_hour is present here.",
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "context_window": {
+    "context_window_size": 1000000,
+    "used_percentage": 4,
+    "current_usage": {
+      "input_tokens": 35000,
+      "output_tokens": 900,
+      "cache_creation_input_tokens": 3000,
+      "cache_read_input_tokens": 2000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 0,
+      "resets_at": 1785312000
+    }
+  }
+}

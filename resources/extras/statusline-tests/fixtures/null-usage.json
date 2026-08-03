@@ -1,0 +1,19 @@
+{
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "cost": {
+    "total_cost_usd": 0
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": null,
+    "remaining_percentage": null,
+    "current_usage": null
+  }
+}
