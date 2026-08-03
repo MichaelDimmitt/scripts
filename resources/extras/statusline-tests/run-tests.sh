@@ -148,6 +148,19 @@ case_header "non-git directory" "$out"
 dont "no 'detected' placeholder" "$out" "detected"
 want "reports no git"         "$out" "no git"
 
+# jq unavailable: the bar must degrade to directory and git info, not vanish.
+# PATH is sandboxed to a directory holding only git, so jq cannot be found.
+# (Note: recent macOS ships /usr/bin/jq, so simply dropping homebrew from PATH
+# is not enough to exercise this path.)
+sandbox=$tmpdir/nojq-bin
+mkdir -p "$sandbox"
+if git_bin=$(command -v git); then ln -sf "$git_bin" "$sandbox/git"; fi
+out=$(cd "$here" && PATH="$sandbox" /bin/bash "$script" < "$fixtures/full.json" 2>/dev/null | strip_ansi)
+case_header "jq unavailable" "$out"
+want "still prints a directory" "$out" "dir:"
+dont "omits usage segments"   "$out" "5h"
+if [ -n "$out" ]; then ok "produces output"; else no "produces output" "$out"; fi
+
 # Narrow terminal: the whole line must fit inside COLUMNS.
 out=$(COLUMNS=60 bash "$script" < "$fixtures/no-model.json" 2>/dev/null | strip_ansi)
 case_header "narrow terminal (COLUMNS=60)" "$out"
