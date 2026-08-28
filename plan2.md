@@ -333,11 +333,23 @@ repo wins if these ever disagree. Steps are not PRs; see
 
 | # | Step | State | Commit |
 |---|------|-------|--------|
-| 1 | P2 — effort indicator | done | `3262d05` |
-| 2 | P0 — `render_rel` helper | done | `65d9615` |
-| 3 | P1 — reset countdown | done | `128bff9` |
+| 1 | P2 — effort indicator | done | `3262d05` (PR #4) |
+| 2 | P0 — `render_rel` helper | done | `309675c` (PR #6) |
+| 3 | P1 — reset countdown | done | `309675c` (PR #6) |
 | 4 | Live with it — human call | next — **ask the user** | — |
 | 5 | Three-tier width ladder | gated on 4 | — |
+
+Steps 2 and 3 share a sha because PR #6 was **squash**-merged, so the three
+commits behind them (`render_rel` helper, countdown, deflake) collapsed into one.
+The per-step shas this table used to carry — `65d9615` and `128bff9` — no longer
+exist on `master`; do not go looking for them.
+
+That squash is worth noting against ["How this ships"](#how-this-ships) below,
+which argues the helper/feature/deflake split is worth reading in `git log`. It
+was a deliberate call at merge time, not an oversight, but the consequence is
+that the split now survives only in PR #6's description and in this plan — not in
+history. If the same reasoning still holds for step 5, merge that one without
+squashing.
 
 1. **P2 — effort indicator** (~15 min). Despite being second on value. It touches
    the jq contract and the `model_seg` construction — the same two sites P1
@@ -374,7 +386,7 @@ So the steps in the table above do **not** map one-to-one onto PRs:
 | Steps | Ships as |
 |-------|----------|
 | 1 (P2, effort) | its own PR — merged as #4 |
-| 2 + 3 (`render_rel` + countdown) | **one PR**, opened at the end of step 3 |
+| 2 + 3 (`render_rel` + countdown) | one PR — merged as #6 |
 | 5 (width ladder) | its own PR, if step 4 says build it |
 
 **Why 2 and 3 travel together.** Step 2 landed a test helper whose only caller
@@ -388,6 +400,11 @@ countdown fixtures.
 
 Keep them as separate *commits* either way — the split is worth reading in
 `git log`; it is only the review boundary that is wrong.
+
+**In the event, #6 was squash-merged**, so that last paragraph did not survive
+contact with the merge button: the split exists in the PR and in this plan, but
+not in `master`'s history. Left standing rather than rewritten, because the
+argument is still the right one for step 5 — it just needs the merge to match it.
 
 **Per `prompt.md`, no session opens a PR on its own.** Steps get committed, not
 pushed. Opening the PR is a human call, and for the step-2+3 bundle the moment is
