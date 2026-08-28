@@ -12,7 +12,7 @@
 ## What it shows
 
 ```
-dir: ~/scripts  (a770942a5) (master)  model: Opus  ctx 16k/200k (8%)  5h 23%  7d 41%  $0.01
+dir: ~/scripts  (a770942a5) (master)  model: Opus  ctx 16k/200k (8%)  5h 23%  7d 41%  +$0.04  $0.01
 ```
 
 | Segment | Source | Notes |
@@ -22,11 +22,35 @@ dir: ~/scripts  (a770942a5) (master)  model: Opus  ctx 16k/200k (8%)  5h 23%  7d
 | `model:` | `model.display_name` | omitted when absent |
 | `ctx` | `context_window` | omitted until the first API call, and after `/compact` |
 | `5h` / `7d` | `rate_limits` | Pro/Max only; each window may appear independently |
-| `$` | `cost.total_cost_usd` | client-side estimate; hidden at `$0.00` |
+| `+$` | derived | what the command you just ran cost; hidden below a cent |
+| `$` | `cost.total_cost_usd` | session total; client-side estimate, hidden at `$0.00` |
 
 Usage percentages are colour-coded: green below 70%, yellow 70–89%, red 90%+.
 They are **floored**, never rounded, so 99.6% shows as `99%` rather than a
 limit-reached-looking `100%`.
+
+### The two cost figures
+
+Both are estimates Claude Code computes locally from token counts at standard
+API list rates. On a Pro or Max plan nothing is billed against them — usage is
+included in the subscription, so they are an API-equivalent valuation rather
+than a bill. The `5h` and `7d` segments are what actually constrains you.
+
+`$` is the session total and resets on `/clear`, not on `/compact`. `+$` is the
+share the most recent command added, and is **derived, not reported**: the
+payload carries no marker for where one command ends and the next begins, so the
+script infers it — a total that grew since the last render means a command is
+still running, a total that held steady means it finished. Two consequences
+worth knowing:
+
+- It needs `refreshInterval` set. Without idle renders the total only ever
+  moves, so every command reads as one unbroken turn.
+- A command that goes quiet for longer than `refreshInterval` mid-flight — a
+  slow test run between two API calls — is counted as two commands.
+
+State lives in `$TMPDIR/claude-statusline/<session_id>`, one file per session.
+Set `CLAUDE_STATUSLINE_STATE_DIR` to move it. Delete a file and that session
+simply re-baselines on its next render.
 
 ## Without cloning the repo (paste to claude)
 
