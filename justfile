@@ -32,3 +32,7 @@ generate-cask-aliases:
 # Wire up latest_release and git checkout release* intercept
 install-checkout-release:
     bash install/install_checkout_release.sh
+
+# Copy the status line to ~/.claude and check settings.json points at it
+install-statusline:
+    bash install/install_statusline.sh
