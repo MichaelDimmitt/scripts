@@ -74,8 +74,19 @@ both **Unix epoch seconds**. Confirmed in the docs field table.
 ### Implementation
 
 Two extra fields on the existing jq program — the contract grows from 10 lines to
-12. Get "now" from bash's `$EPOCHSECONDS` (a builtin since bash 5.0, no `date`
-fork) and pass it in with `--argjson`, mirroring how `$state` is already passed.
+12. Get "now" from **jq's own `now` builtin**, floored to seconds:
+
+```jq
+(now | floor) as $n
+```
+
+**Corrected 2026-08-28.** This section previously said to read bash's
+`$EPOCHSECONDS` and pass it in with `--argjson`, mirroring `$state`. That does
+not work on this machine and would have shipped a feature that never renders —
+see the bash 3.2 note under Edge cases. `now` costs no extra process (jq already
+runs), needs no bash version floor, and removes the degradation path entirely
+rather than guarding it. Verified: `jq 'now|floor'` returns the same epoch as
+`date +%s`, and works inside a `def`.
 
 A `remaining` filter alongside the existing `pct` and `show` helpers:
 
@@ -110,10 +121,19 @@ five_rem_seg=""
   timestamp, and the honest render is no countdown at all.
 - **`resets_at` absent, `used_percentage` present.** Show the percentage alone.
   Each window is independently optional per the schema.
-- **bash 3.2** (stock macOS). `$EPOCHSECONDS` does not exist there and expands
-  empty. Guard with `${EPOCHSECONDS:-}` and pass `0`, which makes `remaining`
-  return null for every window and degrades to exactly today's output. The
-  script's own header says every field degrades to empty — this keeps that true.
+- **bash 3.2** (stock macOS) — **resolved by using jq's `now`; no longer an edge
+  case.** Recorded because the original framing was wrong in a way worth not
+  repeating. This section used to call bash 3.2 an edge case handled by guarding
+  `${EPOCHSECONDS:-}` and passing `0`, on the reasoning that `remaining` would
+  then return null for every window and degrade to exactly today's output — which
+  is true, and which the script's "every field degrades to empty" header endorses.
+  But on this machine `/bin/bash` **and** the bash on `PATH` are both
+  3.2.57, so there is no bash 5 anywhere: that "degraded" path was the *only*
+  path. The countdown would have landed green, passed its whole suite, and
+  displayed nothing — and step 4 asks a human whether the countdowns earn their
+  columns, a judgment impossible to make about something that never renders.
+  Correct degradation of a field nobody can see is not degradation, it is a
+  no-op wearing its costume. Hence `now`.
 - **Interaction with the `pct` clamp.** The clamp exists because upstream bug
   \#52326 can leak the `resets_at` epoch into `used_percentage`. This change reads
   the field the clamp was written to defend against, so **keep the clamp** — it
@@ -252,6 +272,18 @@ colouring it would overload a signal that currently means one thing.
 Numbered by priority above; execute in this order, which is not the same thing.
 The principle: land the cheap parts first, and sequence the one genuinely complex
 piece last and behind a real usage signal.
+
+**Status.** Kept current as each step lands, but treat it as a summary, not the
+source of truth — `prompt.md` derives the next step by probing the repo, and the
+repo wins if these ever disagree.
+
+| # | Step | State | Commit |
+|---|------|-------|--------|
+| 1 | P2 — effort indicator | done | `3262d05` |
+| 2 | P0 — `render_rel` helper | done | `65d9615` |
+| 3 | P1 — reset countdown | next | — |
+| 4 | Live with it — human call | blocked on 3 | — |
+| 5 | Three-tier width ladder | gated on 4 | — |
 
 1. **P2 — effort indicator** (~15 min). Despite being second on value. It touches
    the jq contract and the `model_seg` construction — the same two sites P1
