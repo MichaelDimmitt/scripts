@@ -184,21 +184,57 @@ want "still shows 5h"         "$out" "5h 15%"
 # assert that a future countdown differs from no countdown, which is the feature
 # working, not the conversion working. Converting the same offset twice isolates
 # the one thing this case is for.
-jq '.rate_limits.five_hour |= (.resets_in = 3600 | del(.resets_at))' \
+#
+# Both the offset and the clock sampling are chosen to keep this deterministic,
+# and neither is arbitrary -- an earlier version of this case flaked ~2% of runs:
+#
+#   * No exact minute is asserted. There is always a gap between the harness
+#     reading the clock to build `resets_at` and jq reading its own to subtract
+#     from it, so a 5400s offset renders "1h29m" whenever that gap crosses a
+#     second -- and no offset avoids this, because the two readings are different
+#     instants by construction. Picking a "safe" offset away from the h/m
+#     boundary does not help; only not pinning the minute does.
+#   * One `date` sample, shared. Sampling separately here and inside render_rel
+#     means the two straddle a second boundary now and then, putting the twin's
+#     epoch 1s from the relative one's -- which is precisely the difference this
+#     case asserts does not exist. So the conversion is inlined here rather than
+#     calling render_rel, to pin both sides to the same clock reading.
+now=$(date +%s)
+jq '.rate_limits.five_hour |= (.resets_in = 5400 | del(.resets_at))' \
   "$fixtures/full.json" > "$tmpdir/relative.json"
-jq --argjson now "$(date +%s)" \
-  '.rate_limits.five_hour |= (.resets_at = $now + 3600)' \
+jq --argjson now "$now" \
+  '.rate_limits.five_hour |= (.resets_at = $now + 5400)' \
   "$fixtures/full.json" > "$tmpdir/absolute.json"
-out=$(render_rel "$tmpdir/relative.json")
+out=$(jq --argjson now "$now" \
+  '(.rate_limits[]? | select(.resets_in != null))
+   |= (.resets_at = $now + .resets_in | del(.resets_in))' "$tmpdir/relative.json" \
+  | bash "$script" 2>/dev/null | strip_ansi)
 case_header "render_rel converts resets_in to an epoch" "$out"
 want "renders the whole line"  "$out" "5h 23%"
-want "converts to a countdown" "$out" "5h 23% (1h0m)"
-dont "no resets_in leaks out"  "$out" "3600"
-if [ "$out" = "$(render "$tmpdir/absolute.json")" ]; then
+want "converts to a countdown" "$out" "5h 23% (1h"
+dont "no resets_in leaks out"  "$out" "5400"
+# Compared with the countdown masked out. The two renders come from two jq
+# processes, each reading its own `now`, so the minute can legitimately differ by
+# one between them -- comparing raw strings reintroduces the flake at a lower
+# rate rather than fixing it. Masking asserts what the conversion is actually
+# responsible for: that resets_in produces the same payload as the equivalent
+# absolute epoch, everywhere except the field whose whole job is to track a clock.
+mask_countdown() { printf '%s' "$1" | sed 's/(\([0-9]*d\)\{0,1\}[0-9]*[hm][0-9]*m\{0,1\})/(T)/g'; }
+if [ "$(mask_countdown "$out")" = "$(mask_countdown "$(render "$tmpdir/absolute.json")")" ]; then
   ok "matches the absolute-epoch render"
 else
   no "matches the absolute-epoch render" "$out"
 fi
+
+# The comparison above pins its own clock, which means it no longer runs
+# render_rel itself. The four countdown cases do, but assert this directly too --
+# a helper whose self-check stopped calling it is how it rots unnoticed. Asserted
+# loosely on purpose: anything exact enough to pin the minute would reintroduce
+# the boundary flake this case just removed.
+out=$(render_rel "$tmpdir/relative.json")
+case_header "render_rel is still the path under test" "$out"
+want "renders a countdown"     "$out" "5h 23% (1h"
+dont "no resets_in leaks out"  "$out" "5400"
 
 # --- rate-limit reset countdowns --------------------------------------------
 # All four use render_rel: an absolute future epoch in a fixture goes stale and

@@ -229,6 +229,26 @@ countdown" against "a past epoch's absent one" and fails. It now builds an
 absolute twin from the same offset, which is what the case was always meant to
 isolate — the conversion, not the feature.
 
+**A time-dependent assertion is time-flaky, and the first two fixes were wrong.**
+Worth recording, because the countdown is the plan's only clock-reading feature
+and step 5 will touch these same cases. The rewritten self-check failed ~2% of
+runs, found by stressing it 400× rather than by the single green run that would
+otherwise have shipped it. Two attempts missed:
+
+1. *Sample the clock once and share it.* Necessary — two `date` reads straddle a
+   second boundary now and then — but not sufficient. The harness's `date` and
+   jq's `now` are still different instants, so `now + 5400` has ~5399s left by
+   the time it renders.
+2. *Pick an offset away from the h/m boundary.* Wrong premise. 3600s is not
+   fragile because it sits on a boundary; **every** exact offset is fragile,
+   because the gap between the two clock reads is unavoidable. 5400 just moved
+   which minute was wrong.
+
+What works is not asserting an exact minute (`(1h` matches both `1h29m` and
+`1h30m`), and comparing the two renders with the countdown masked to `(T)` — so
+the equality tests what the conversion owes, and not the one field whose whole
+job is to differ between two clock reads.
+
 These fixtures depend on a `render_rel` helper in the runner — build that first
 (P0 below), so they are written against it the first time.
 
