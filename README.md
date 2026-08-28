@@ -130,6 +130,54 @@ Then add this to `~/.claude/settings.json`:
 session sits idle — without it they freeze during long tool calls. See
 [statusline-setup.md](./resources/extras/statusline-setup.md#why-refreshinterval).
 
+#### How it compares to the popular status lines
+
+There is a sizeable ecosystem of Claude Code status lines, most of them larger
+than this one. The useful ones to know about:
+
+| Project | Language | Notes |
+|---------|----------|-------|
+| [ccstatusline](https://github.com/sirmalloc/ccstatusline) | TypeScript | The category leader. Dozens of widgets, TUI configurator, Powerline themes. Runs via `npx @latest` per render. |
+| [claude-powerline](https://github.com/Owloops/claude-powerline) | TypeScript | Vim-style powerline, installable from the plugin marketplace. Node 18+. |
+| [CCometixLine](https://github.com/Haleclipse/CCometixLine) | Rust | Compiled binary — the fastest render in the field. Multiple themes. |
+| [claude-statusline-powerline](https://github.com/spences10/claude-statusline-powerline) | TypeScript | Superscript git symbols, tuned for Victor Mono. |
+| [ccusage statusline](https://ccusage.com/guide/statusline) | TypeScript | Cost-focused: session / daily / block spend, burn rate. Own pricing engine. |
+| [kcchien/claude-code-statusline](https://github.com/kcchien/claude-code-statusline) | Bash | Closest peer to this one — single `jq` call, gradient context bar, git status. |
+| [awesome-claude-statusline](https://github.com/jakreymyers/awesome-claude-statusline) | Bash | Git Flow branch icons, ahead/behind sync status. |
+
+Feature comparison against this script:
+
+| | This script | ccstatusline | ccusage | kcchien |
+|---|---|---|---|---|
+| Context window % | ✓ | ✓ | ✓ | ✓ |
+| 5h / 7d rate limits | ✓ | ✓ | ✗ | ✓ |
+| Session cost | ✓ | ✓ | ✓ | ✓ |
+| **Per-command cost** | **✓** | ✗ | ✗ | ✗ |
+| Git SHA + branch | ✓ | ✓ | ✗ | ✓ |
+| Width-aware path collapsing | ✓ | ✓ | ✗ | ✓ |
+| No runtime dependency beyond `jq` | ✓ | ✗ | ✗ | ✓ |
+| No network at render time | ✓ | ✗ | ✗ | ✓ |
+| Git dirty / staged / ahead-behind | ✗ | ✓ | ✗ | ✓ |
+| Per-model weekly limits | ✗ | ✓ | ✗ | ✗ |
+| Burn rate, block timers | ✗ | ✓ | ✓ | ✗ |
+| Lines added/removed, session duration | ✗ | ✓ | ✗ | ✓ |
+| Reasoning effort indicator | ✗ | ✓ | ✓ | ✗ |
+| Powerline / Nerd Font theming | ✗ | ✓ | ✗ | ✓ |
+| TUI configuration | ✗ | ✓ | ✗ | ✓ |
+
+The tradeoff is deliberate. [A survey of the
+ecosystem](https://yigitkonur.com/research/claude-code-statuslines-compared)
+concluded that these tools are no longer differentiated by whether they can show
+model, context, git, and cost — everything does — but by *how they install, what
+data they trust, and whether they do network or transcript work at render time*.
+This script reads only the official stdin payload, forks two processes (`jq` and
+`git`), and degrades every field independently rather than failing the whole bar.
+The per-command cost segment is the one feature none of the popular ones have:
+the payload carries only a cumulative total, so this-command cost has to be
+inferred from turn boundaries.
+
+Planned additions are tracked in [plan2.md](./plan2.md).
+
 ### Claude Code context monitor
 
 A `Stop` hook that warns you as a session approaches autocompact, so you can
