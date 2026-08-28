@@ -14,6 +14,11 @@ script=${1:-$here/../statusline-command.sh}
 fixtures=$here/fixtures
 tmpdir=${TMPDIR:-/tmp}/statusline-tests.$$
 
+# The per-command cost segment remembers the previous render on disk. Point that
+# state at the throwaway dir so a test run neither reads a real session's history
+# nor leaves anything behind for the next run to trip over.
+export CLAUDE_STATUSLINE_STATE_DIR=$tmpdir/state
+
 ESC=$(printf '\033')
 pass=0
 fail=0
@@ -170,6 +175,58 @@ else
   no "exceeds 60 columns (${#out})" "$out"
 fi
 want "keeps the usage segments" "$out" "5h 60%"
+
+# Per-command cost. The segment is inferred from how the session total moves
+# between renders, so each assertion below is about a *sequence* of renders, not
+# a single payload -- hence a helper rather than a fixture file.
+turn() { # session id, session total -> plain rendered line
+  jq --arg s "$1" --argjson c "$2" \
+    '.session_id = $s | .cost.total_cost_usd = $c' \
+    "$fixtures/full.json" > "$tmpdir/turn.json"
+  render "$tmpdir/turn.json"
+}
+
+out=$(turn turn-a 0.05)
+case_header "per-command cost: first render" "$out"
+dont "adopts a baseline, claims nothing" "$out" "+\$"
+want "still shows the total"  "$out" "\$0.05"
+
+out=$(turn turn-a 0.10)
+case_header "per-command cost: total rose" "$out"
+want "reports what the command cost" "$out" "+\$0.05"
+want "sits to the left of the total" "$out" "+\$0.05  \$0.10"
+
+out=$(turn turn-a 0.10)
+case_header "per-command cost: idle render" "$out"
+want "holds the last command's cost" "$out" "+\$0.05"
+
+out=$(turn turn-a 0.13)
+case_header "per-command cost: next command" "$out"
+want "measures from the idle total" "$out" "+\$0.03"
+
+out=$(turn turn-a 0.16)
+case_header "per-command cost: same command continues" "$out"
+want "accumulates rather than resets" "$out" "+\$0.06"
+
+# A tool-heavy command can add a fraction of a cent. "+$0.00" is noise.
+out=$(turn turn-b 0.50)
+out=$(turn turn-b 0.503)
+case_header "per-command cost: sub-cent command" "$out"
+dont "hides a sub-cent command" "$out" "+\$0.00"
+
+# Resuming an old session shows a large total on the very first render; that
+# history belongs to no single command and must not be attributed to one.
+out=$(turn turn-c 12.34)
+case_header "per-command cost: resumed session" "$out"
+dont "does not claim the backlog" "$out" "+\$"
+want "still shows the total"  "$out" "\$12.34"
+
+# No session_id: nothing to key state by. Degrade to the total alone.
+jq 'del(.session_id)' "$fixtures/full.json" > "$tmpdir/no-session.json"
+out=$(render "$tmpdir/no-session.json")
+case_header "per-command cost: no session_id" "$out"
+dont "omits the per-command segment" "$out" "+\$"
+want "renders everything else"  "$out" "5h 23%"
 
 # --- summary ----------------------------------------------------------------
 

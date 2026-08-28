@@ -2,8 +2,9 @@
 # Claude Code status line.
 #
 # Renders: directory, git sha/branch, model, context-window usage, 5h/7d
-# rate-limit usage, and session cost. Reads the session JSON that Claude Code
-# pipes on stdin. Schema and behaviour: https://code.claude.com/docs/en/statusline
+# rate-limit usage, and cost (this command, then the session total). Reads the
+# session JSON that Claude Code pipes on stdin.
+# Schema and behaviour: https://code.claude.com/docs/en/statusline
 #
 # Tests: resources/extras/statusline-tests/run-tests.sh
 #
@@ -27,14 +28,45 @@ YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
 
+# --- Per-command cost state -------------------------------------------------
+# The payload carries only a cumulative session total; nothing in it marks where
+# one command ends and the next begins. The boundary is inferred instead: a
+# total that grew since the last render means a command is still in flight, a
+# total that held steady means it finished, so the next rise starts a new one.
+# That inference needs idle renders to happen at all, which is what
+# `refreshInterval` buys — without it the bar only updates when the total moves
+# and every command looks like one unbroken turn.
+#
+# State lives in TMPDIR so the OS reaps it; each session keeps its own file, and
+# `/clear` issues a new session_id and so starts from zero on its own.
+state_dir=${CLAUDE_STATUSLINE_STATE_DIR:-${TMPDIR:-/tmp}/claude-statusline}
+state=""
+state_file=""
+
+# session_id is matched in bash rather than read from jq: the state has to be in
+# hand *before* jq runs, since jq is what does the floating-point subtraction.
+# [[ =~ ]] is a builtin, so this costs no process. The character class doubles as
+# the sanitiser -- only a UUID-shaped id can reach the path below. The payload is
+# pretty-printed in the fixtures and compact in the wild, hence the [[:space:]].
+session_id=""
+session_re='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
+if [[ $input =~ $session_re ]]; then
+  session_id=${BASH_REMATCH[1]}
+fi
+if [ -n "$session_id" ]; then
+  state_file=$state_dir/$session_id
+  [ -r "$state_file" ] && IFS= read -r state < "$state_file"
+fi
+
 # --- Parse ------------------------------------------------------------------
 # One jq invocation for every field. Claude Code cancels an in-flight status
 # line when a new update arrives, so a script that forks a process per field
 # risks being killed before it prints. jq also does all the arithmetic, keeping
 # bash away from float formatting entirely.
 #
-# Contract: 8 lines, in order, empty when unavailable:
-#   cwd, model, cost, ctx_used_k, ctx_size_k, ctx_pct, five_pct, week_pct
+# Contract: 10 lines, in order, empty when unavailable:
+#   cwd, model, cost, ctx_used_k, ctx_size_k, ctx_pct, five_pct, week_pct,
+#   cmd_cost, new_state
 jq_program='
   def finite:
     if type == "number" and (isnan | not) and (isinfinite | not)
@@ -52,7 +84,23 @@ jq_program='
   # Floor, never round: 99.6% must not display as a limit-reached 100%.
   def show: if . == null then "" else (floor | tostring) end;
 
-  (.context_window.current_usage // {}) as $u
+  # The previous render left "total base active" here, empty on the first render.
+  # Guard every field: a truncated state file must not take the bar down.
+  ($state | split(" ")) as $s
+  | ($s[0] | tonumber? // null) as $prev
+  | ($s[1] | tonumber? // 0) as $base
+  | ($s[2] | tonumber? // 0) as $act
+  | (.cost.total_cost_usd | finite) as $total
+  # First sight of a session adopts the total as the baseline rather than
+  # claiming it as one command: a resumed session would otherwise report its
+  # entire history as the cost of the next thing you type. A total that went
+  # *down* is not something the schema produces, so treat it as a fresh start.
+  | (if $total == null then null
+     elif $prev == null or $total < $prev then {b: $total, a: 0}
+     elif $total > $prev then {b: (if $act == 1 then $base else $prev end), a: 1}
+     else {b: $base, a: 0} end) as $turn
+
+  | (.context_window.current_usage // {}) as $u
   | (($u.input_tokens // 0)
      + ($u.cache_read_input_tokens // 0)
      + ($u.cache_creation_input_tokens // 0)) as $tok
@@ -71,7 +119,10 @@ jq_program='
        then ((.context_window.used_percentage | pct) // ($tok * 100 / $size)) | show
        else "" end),
       (.rate_limits.five_hour.used_percentage | pct | show),
-      (.rate_limits.seven_day.used_percentage | pct | show)
+      (.rate_limits.seven_day.used_percentage | pct | show),
+      (if $turn == null then "" else ($total - $turn.b | tostring) end),
+      (if $turn == null then $state
+       else "\($total) \($turn.b) \($turn.a)" end)
     ]
   | .[]
 '
@@ -84,6 +135,8 @@ ctx_size_k=""
 ctx_pct=""
 five_pct=""
 week_pct=""
+cmd_cost=""
+new_state=""
 
 # Without jq the bar degrades to directory and git info instead of vanishing.
 if command -v jq >/dev/null 2>&1; then
@@ -99,8 +152,18 @@ if command -v jq >/dev/null 2>&1; then
       6) ctx_pct=$value ;;
       7) five_pct=$value ;;
       8) week_pct=$value ;;
+      9) cmd_cost=$value ;;
+      10) new_state=$value ;;
     esac
-  done < <(printf '%s' "$input" | jq -r "$jq_program" 2>/dev/null)
+  done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
+fi
+
+# Persist before rendering: a bar that gets cancelled mid-print has still
+# advanced the turn state, so the next render measures from the right place.
+if [ -n "$state_file" ] && [ -n "$new_state" ]; then
+  if [ -d "$state_dir" ] || mkdir -p "$state_dir" 2>/dev/null; then
+    printf '%s\n' "$new_state" > "$state_file" 2>/dev/null
+  fi
 fi
 
 [ -z "$cwd" ] && cwd=$(pwd)
@@ -159,10 +222,25 @@ if [ -n "$week_pct" ]; then
   add_segment "  ${CYAN}7d${RESET} ${_colour}${week_pct}%${RESET}" "  7d ${week_pct}%"
 fi
 
+# `printf -v` rather than $(printf ...): command substitution forks a subshell
+# even around a builtin, and this runs on every render.
 if [ -n "$cost" ]; then
-  cost_fmt=$(printf '%.2f' "$cost" 2>/dev/null)
+  cost_fmt=""
+  printf -v cost_fmt '%.2f' "$cost" 2>/dev/null
   if [ -n "$cost_fmt" ] && [ "$cost_fmt" != "0.00" ]; then
-    add_segment "  ${CYAN}\$${RESET}${cost_fmt}" "  \$${cost_fmt}"
+    # This command's share sits to the left of the running total. Both are
+    # dropped below a cent: "+$0.00" is noise, not information.
+    cmd_seg=""
+    cmd_plain=""
+    if [ -n "$cmd_cost" ]; then
+      cmd_fmt=""
+      printf -v cmd_fmt '%.2f' "$cmd_cost" 2>/dev/null
+      if [ -n "$cmd_fmt" ] && [ "$cmd_fmt" != "0.00" ]; then
+        cmd_seg="  ${CYAN}+\$${RESET}${cmd_fmt}"
+        cmd_plain="  +\$${cmd_fmt}"
+      fi
+    fi
+    add_segment "${cmd_seg}  ${CYAN}\$${RESET}${cost_fmt}" "${cmd_plain}  \$${cost_fmt}"
   fi
 fi
 
