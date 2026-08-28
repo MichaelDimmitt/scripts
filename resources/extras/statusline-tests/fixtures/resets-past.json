@@ -1,0 +1,31 @@
+{
+  "_comment": "A window whose resets_at has already passed. Claude Code drops a window once it resets, so this is what a stale payload looks like. The percentage must still render; the countdown must not, and must not leave a negative duration or an empty '()' behind.",
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 30,
+    "current_usage": {
+      "input_tokens": 50000,
+      "output_tokens": 1000,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 5000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 55,
+      "resets_in": -60
+    },
+    "seven_day": {
+      "used_percentage": 41.2,
+      "resets_in": -86400
+    }
+  }
+}

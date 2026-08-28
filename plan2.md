@@ -73,8 +73,8 @@ both **Unix epoch seconds**. Confirmed in the docs field table.
 
 ### Implementation
 
-Two extra fields on the existing jq program — the contract grows from 10 lines to
-12. Get "now" from **jq's own `now` builtin**, floored to seconds:
+Two extra fields on the existing jq program — the contract grows from 11 lines to
+13. Get "now" from **jq's own `now` builtin**, floored to seconds:
 
 ```jq
 (now | floor) as $n
@@ -141,7 +141,17 @@ five_rem_seg=""
 
 ### Width
 
-Adds roughly 8–9 columns per window, ~17 total.
+Adds roughly 8–9 columns per window, ~17 total. **Measured after landing:** 15
+columns on `full.json` with both countdowns (94 vs 79 at `COLUMNS=60`).
+
+**Measured, and it sharpens step 5.** The bar already overran a narrow terminal
+before this change: at `COLUMNS=60`, `full.json` rendered 79 columns, because once
+the path is gone `rest_str` has nothing left to yield and is printed whole. The
+countdowns take that to 94. This is not a regression — same behaviour, more of it
+— but it means the ladder in step 5 is not a refinement, it is the fix for a
+pre-existing overrun that the countdowns make ~15 columns worse. Worth weighing in
+step 4: the question is not only "are the countdowns useful" but "useful enough to
+pay the ladder for", and the ladder has value even if the answer is no.
 
 **Land P1 with the countdowns load-bearing** — i.e. inside `rest_str`, where the
 path degrades first, exactly as everything right of `dir:` does today. No change
@@ -185,16 +195,39 @@ be noise, this step is deleted rather than built.
 
 Extend `resources/extras/statusline-tests/`:
 
-- `full.json` — add `resets_at` to both windows; assert both countdowns render.
+- **Corrected 2026-08-28.** This list said "`full.json` — add `resets_at` to both
+  windows; assert both countdowns render." Both windows already *had* `resets_at`,
+  and both epochs are fixed dates now ~15 months past, so they render no countdown
+  — the assertion would have failed, and "adding" the field was a no-op. Worse,
+  had they been future epochs when written they would have been the exact stale-
+  fixture trap P0 exists to prevent. So the positive assertions live in a new
+  relative fixture instead, and `full.json` is untouched: it is the shared base for
+  the cost-sequence, no-jq and no-session cases, and switching it to `resets_in`
+  would drag `render_rel` into six call sites for no gain.
+- New `resets-relative.json` — both windows future via `resets_in`; assert
+  `5h 23% (1h23m)` and `7d 41% (2d4h)`, covering both the h/m and d/h branches.
 - New `resets-past.json` — `resets_in` negative; assert percentage renders and
   no countdown, no negative number, no stray `()`.
 - New `resets-imminent.json` — `resets_in` of a few seconds. This is the boundary
   where "expires between renders" lives, and the only case that exercises the
-  transition the `remaining` filter guards.
+  transition the `remaining` filter guards. **Resolved:** under a minute renders
+  `(0m)`, not nothing. The plan left this open; `0m` is the honest reading, since
+  the window has not reset yet and dropping the countdown would claim it had.
 - New `resets-missing.json` — `used_percentage` without `resets_at`; assert the
   segment matches today's output exactly.
 - `five-only.json`, `no-ratelimits.json` — assert unchanged (regression guard).
-- `leaked-epoch.json` — assert the clamp still suppresses the bogus percentage.
+  Note `five-only.json`'s epoch is also past, so "unchanged" means "renders no
+  countdown" — which is what makes it a usable guard.
+- `leaked-epoch.json` — assert the clamp still suppresses the bogus percentage,
+  **and** that reading `resets_at` for the countdown does not put the leaked epoch
+  back on the bar by the other door.
+
+**One existing case had to change.** `render_rel`'s self-check compared its output
+against `render "$fixtures/full.json"`. That equality held only while `resets_at`
+changed nothing about the output; with the countdown it compares "a future
+countdown" against "a past epoch's absent one" and fails. It now builds an
+absolute twin from the same offset, which is what the case was always meant to
+isolate — the conversion, not the feature.
 
 These fixtures depend on a `render_rel` helper in the runner — build that first
 (P0 below), so they are written against it the first time.
@@ -282,8 +315,8 @@ repo wins if these ever disagree. Steps are not PRs; see
 |---|------|-------|--------|
 | 1 | P2 — effort indicator | done | `3262d05` |
 | 2 | P0 — `render_rel` helper | done | `65d9615` |
-| 3 | P1 — reset countdown | next | — |
-| 4 | Live with it — human call | blocked on 3 | — |
+| 3 | P1 — reset countdown | done | `e0548dd` |
+| 4 | Live with it — human call | next — **ask the user** | — |
 | 5 | Three-tier width ladder | gated on 4 | — |
 
 1. **P2 — effort indicator** (~15 min). Despite being second on value. It touches
@@ -294,7 +327,9 @@ repo wins if these ever disagree. Steps are not PRs; see
 2. **P0 — `render_rel` helper** (~10 min). Before P1's fixtures exist, so they are
    written against it rather than retrofitted.
 3. **P1 — reset countdown** (~45 min), countdowns load-bearing in the existing
-   width ladder. No fitting-logic changes.
+   width ladder. No fitting-logic changes. Landed as specified; the sketches for
+   `remaining`, the jq contract and `five_rem_seg` all survived contact with the
+   code unchanged. Only the test list needed correcting — see P1's Tests section.
 4. **Live with it for a few days.** The fixtures cannot tell you whether a
    countdown is worth its columns; only using it can.
 5. **Three-tier drop order** — the `percentages > path > countdowns` ladder in

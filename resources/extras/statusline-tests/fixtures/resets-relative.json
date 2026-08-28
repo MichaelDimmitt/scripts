@@ -1,0 +1,31 @@
+{
+  "_comment": "Both windows reset in the future, so both countdowns render. Uses resets_in (seconds from now, converted by render_rel) rather than an absolute epoch: a fixture asserting 'the countdown shows' must not quietly become one asserting 'no countdown' when its timestamp drifts into the past. 5000s exercises the h/m branch, 189000s the d/h branch.",
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 8,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 2000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 23.5,
+      "resets_in": 5000
+    },
+    "seven_day": {
+      "used_percentage": 41.2,
+      "resets_in": 189000
+    }
+  }
+}
