@@ -40,6 +40,7 @@ Requires [`just`](https://github.com/casey/just): `brew install just`
 just                        # list all commands
 just tell-casks
 just tell-ai-tools
+just tell-claude-skills
 just generate-cask-aliases
 just install-checkout-release
 ```
@@ -159,6 +160,15 @@ If `~/skills` doesn't exist, prompts you to clone [anthropics/skills](https://gi
 
 ```sh
 bash tell/tell_skills.sh
+```
+
+---
+
+### `tell/tell_claude_skills.sh`
+Snapshots all Claude Code skill and plugin locations to a dated file (`~/claude-skills-<hostname>-<YYYYMMDD>.txt`). Covers user skills (`~/.claude/skills`), installed plugins (`~/.claude/plugins`), nested plugin skill directories, and project-scoped skill directories under `~/.claude/projects`.
+
+```sh
+bash tell/tell_claude_skills.sh
 ```
 
 ---

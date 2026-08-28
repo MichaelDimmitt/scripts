@@ -17,6 +17,10 @@ tell-rcs:
 tell-skills:
     bash tell/tell_skills.sh
 
+# Snapshot Claude Code skills and plugins to a dated file
+tell-claude-skills:
+    bash tell/tell_claude_skills.sh
+
 # Generate shell aliases for every installed Homebrew cask
 generate-cask-aliases:
     bash generate/generate_cask-aliases.sh
