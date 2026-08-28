@@ -87,6 +87,7 @@ mkdir -p "$tmpdir"
 out=$(render "$fixtures/full.json")
 case_header "full payload" "$out"
 want "shows model"            "$out" "model: Opus"
+want "shows effort level"     "$out" "model: Opus (high)"
 want "shows context tokens"   "$out" "ctx 16k/200k"
 want "shows context percent"  "$out" "(8%)"
 want "shows 5h floored"       "$out" "5h 23%"
@@ -137,7 +138,18 @@ pct_sane "percentages sane"   "$out"
 out=$(render "$fixtures/no-model.json")
 case_header "no model block" "$out"
 dont "omits model label"      "$out" "model:"
+# The fixture carries an effort level with nothing to attach it to; without a
+# model name there must be no parenthetical left floating on the bar.
+dont "no orphaned effort"     "$out" "(high)"
 want "still shows 5h"         "$out" "5h 60%"
+
+# A model without the effort parameter omits the field, and the segment must
+# come out byte-identical to what it was before effort existed.
+out=$(render "$fixtures/no-effort.json")
+case_header "model without an effort level" "$out"
+want "shows the bare model"   "$out" "model: Haiku 4.5  "
+dont "no empty parenthetical" "$out" "()"
+want "still shows 5h"         "$out" "5h 15%"
 
 # Non-git directory: the branch field must not leak a placeholder.
 mkdir -p "$tmpdir/plain"

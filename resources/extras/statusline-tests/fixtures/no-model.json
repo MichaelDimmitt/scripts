@@ -23,5 +23,8 @@
       "used_percentage": 30,
       "resets_at": 1785398400
     }
+  },
+  "effort": {
+    "level": "high"
   }
 }
