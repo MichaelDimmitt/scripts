@@ -275,7 +275,8 @@ piece last and behind a real usage signal.
 
 **Status.** Kept current as each step lands, but treat it as a summary, not the
 source of truth — `prompt.md` derives the next step by probing the repo, and the
-repo wins if these ever disagree.
+repo wins if these ever disagree. Steps are not PRs; see
+[How this ships](#how-this-ships) for where the review boundaries fall.
 
 | # | Step | State | Commit |
 |---|------|-------|--------|
@@ -305,6 +306,37 @@ All of this lands before any Tier 2 work. Git dirty state is the most-requested
 missing field, but it costs a second `git` process against an explicit design
 constraint — worth deciding on its own merits, not bundled in behind changes that
 cost nothing.
+
+## How this ships
+
+**One PR per user-visible feature.** That is what this repo already does: PRs #3,
+#4 and #5 each landed a single status-line feature with its script change, its
+fixtures and its tests together, as one reviewable unit. Scaffolding and docs went
+in direct — `f4f2be0` (this plan) and `3fd4e7e` (`plan.md`) carry no PR number.
+
+So the steps in the table above do **not** map one-to-one onto PRs:
+
+| Steps | Ships as |
+|-------|----------|
+| 1 (P2, effort) | its own PR — merged as #4 |
+| 2 + 3 (`render_rel` + countdown) | **one PR**, opened at the end of step 3 |
+| 5 (width ladder) | its own PR, if step 4 says build it |
+
+**Why 2 and 3 travel together.** Step 2 landed a test helper whose only caller
+today is its own self-check, plus a correction to how step 3 gets the time. On its
+own that PR reads as "a helper for a feature that does not exist yet" — there is
+nothing to review, because the question a reviewer cares about (does the countdown
+work, is it worth its columns) is not in the diff. Alongside P1 the same commits
+read as one coherent change: helper, fix, feature. Holding them also avoids a
+rebase, since step 3 will touch `render_rel`'s neighbourhood when it adds the
+countdown fixtures.
+
+Keep them as separate *commits* either way — the split is worth reading in
+`git log`; it is only the review boundary that is wrong.
+
+**Per `prompt.md`, no session opens a PR on its own.** Steps get committed, not
+pushed. Opening the PR is a human call, and for the step-2+3 bundle the moment is
+after step 3 is green — not before.
 
 ## Explicitly not doing
 
