@@ -13,10 +13,16 @@ brew list --cask | while read cask; do
   fi
 done > ~/.brew-cask-aliases
 
+# Note the pattern here also matches the -additional line, so this deletes both
+# and the generated one is re-added immediately below.
 sed -i '' '/source ~\/.brew-cask-aliases/d' ~/.bashrc
 echo 'source ~/.brew-cask-aliases' >> ~/.bashrc
-cp "$(dirname "$0")/../resources/extras/brew-cask-aliases-additional" ~/.brew-cask-aliases-additional
-echo 'source ~/.brew-cask-aliases-additional' >> ~/.bashrc
+
+# The hand-maintained aliases are installed by their own script rather than
+# copied here. That one detects the shell's RC file instead of assuming
+# ~/.bashrc, and de-duplicates its source line -- this script used to append it
+# unguarded, so every run left another copy behind.
+bash "$(dirname "$0")/../install/install_aliases.sh"
 
 echo ""
 echo "Aliases written. To activate in the CURRENT shell, run:"

@@ -36,3 +36,7 @@ install-checkout-release:
 # Copy the status line to ~/.claude and check settings.json points at it
 install-statusline:
     bash install/install_statusline.sh
+
+# Install cl/cx/cresume/cresumef aliases and source them from your shell RC
+install-aliases:
+    bash install/install_aliases.sh
