@@ -73,9 +73,20 @@ both **Unix epoch seconds**. Confirmed in the docs field table.
 
 ### Implementation
 
-Two extra fields on the existing jq program — the contract grows from 10 lines to
-12. Get "now" from bash's `$EPOCHSECONDS` (a builtin since bash 5.0, no `date`
-fork) and pass it in with `--argjson`, mirroring how `$state` is already passed.
+Two extra fields on the existing jq program — the contract grows from 11 lines to
+13. Get "now" from **jq's own `now` builtin**, floored to seconds:
+
+```jq
+(now | floor) as $n
+```
+
+**Corrected 2026-08-28.** This section previously said to read bash's
+`$EPOCHSECONDS` and pass it in with `--argjson`, mirroring `$state`. That does
+not work on this machine and would have shipped a feature that never renders —
+see the bash 3.2 note under Edge cases. `now` costs no extra process (jq already
+runs), needs no bash version floor, and removes the degradation path entirely
+rather than guarding it. Verified: `jq 'now|floor'` returns the same epoch as
+`date +%s`, and works inside a `def`.
 
 A `remaining` filter alongside the existing `pct` and `show` helpers:
 
@@ -110,10 +121,19 @@ five_rem_seg=""
   timestamp, and the honest render is no countdown at all.
 - **`resets_at` absent, `used_percentage` present.** Show the percentage alone.
   Each window is independently optional per the schema.
-- **bash 3.2** (stock macOS). `$EPOCHSECONDS` does not exist there and expands
-  empty. Guard with `${EPOCHSECONDS:-}` and pass `0`, which makes `remaining`
-  return null for every window and degrades to exactly today's output. The
-  script's own header says every field degrades to empty — this keeps that true.
+- **bash 3.2** (stock macOS) — **resolved by using jq's `now`; no longer an edge
+  case.** Recorded because the original framing was wrong in a way worth not
+  repeating. This section used to call bash 3.2 an edge case handled by guarding
+  `${EPOCHSECONDS:-}` and passing `0`, on the reasoning that `remaining` would
+  then return null for every window and degrade to exactly today's output — which
+  is true, and which the script's "every field degrades to empty" header endorses.
+  But on this machine `/bin/bash` **and** the bash on `PATH` are both
+  3.2.57, so there is no bash 5 anywhere: that "degraded" path was the *only*
+  path. The countdown would have landed green, passed its whole suite, and
+  displayed nothing — and step 4 asks a human whether the countdowns earn their
+  columns, a judgment impossible to make about something that never renders.
+  Correct degradation of a field nobody can see is not degradation, it is a
+  no-op wearing its costume. Hence `now`.
 - **Interaction with the `pct` clamp.** The clamp exists because upstream bug
   \#52326 can leak the `resets_at` epoch into `used_percentage`. This change reads
   the field the clamp was written to defend against, so **keep the clamp** — it
@@ -121,7 +141,17 @@ five_rem_seg=""
 
 ### Width
 
-Adds roughly 8–9 columns per window, ~17 total.
+Adds roughly 8–9 columns per window, ~17 total. **Measured after landing:** 15
+columns on `full.json` with both countdowns (94 vs 79 at `COLUMNS=60`).
+
+**Measured, and it sharpens step 5.** The bar already overran a narrow terminal
+before this change: at `COLUMNS=60`, `full.json` rendered 79 columns, because once
+the path is gone `rest_str` has nothing left to yield and is printed whole. The
+countdowns take that to 94. This is not a regression — same behaviour, more of it
+— but it means the ladder in step 5 is not a refinement, it is the fix for a
+pre-existing overrun that the countdowns make ~15 columns worse. Worth weighing in
+step 4: the question is not only "are the countdowns useful" but "useful enough to
+pay the ladder for", and the ladder has value even if the answer is no.
 
 **Land P1 with the countdowns load-bearing** — i.e. inside `rest_str`, where the
 path degrades first, exactly as everything right of `dir:` does today. No change
@@ -165,16 +195,59 @@ be noise, this step is deleted rather than built.
 
 Extend `resources/extras/statusline-tests/`:
 
-- `full.json` — add `resets_at` to both windows; assert both countdowns render.
+- **Corrected 2026-08-28.** This list said "`full.json` — add `resets_at` to both
+  windows; assert both countdowns render." Both windows already *had* `resets_at`,
+  and both epochs are fixed dates now ~15 months past, so they render no countdown
+  — the assertion would have failed, and "adding" the field was a no-op. Worse,
+  had they been future epochs when written they would have been the exact stale-
+  fixture trap P0 exists to prevent. So the positive assertions live in a new
+  relative fixture instead, and `full.json` is untouched: it is the shared base for
+  the cost-sequence, no-jq and no-session cases, and switching it to `resets_in`
+  would drag `render_rel` into six call sites for no gain.
+- New `resets-relative.json` — both windows future via `resets_in`; assert
+  `5h 23% (1h23m)` and `7d 41% (2d4h)`, covering both the h/m and d/h branches.
 - New `resets-past.json` — `resets_in` negative; assert percentage renders and
   no countdown, no negative number, no stray `()`.
 - New `resets-imminent.json` — `resets_in` of a few seconds. This is the boundary
   where "expires between renders" lives, and the only case that exercises the
-  transition the `remaining` filter guards.
+  transition the `remaining` filter guards. **Resolved:** under a minute renders
+  `(0m)`, not nothing. The plan left this open; `0m` is the honest reading, since
+  the window has not reset yet and dropping the countdown would claim it had.
 - New `resets-missing.json` — `used_percentage` without `resets_at`; assert the
   segment matches today's output exactly.
 - `five-only.json`, `no-ratelimits.json` — assert unchanged (regression guard).
-- `leaked-epoch.json` — assert the clamp still suppresses the bogus percentage.
+  Note `five-only.json`'s epoch is also past, so "unchanged" means "renders no
+  countdown" — which is what makes it a usable guard.
+- `leaked-epoch.json` — assert the clamp still suppresses the bogus percentage,
+  **and** that reading `resets_at` for the countdown does not put the leaked epoch
+  back on the bar by the other door.
+
+**One existing case had to change.** `render_rel`'s self-check compared its output
+against `render "$fixtures/full.json"`. That equality held only while `resets_at`
+changed nothing about the output; with the countdown it compares "a future
+countdown" against "a past epoch's absent one" and fails. It now builds an
+absolute twin from the same offset, which is what the case was always meant to
+isolate — the conversion, not the feature.
+
+**A time-dependent assertion is time-flaky, and the first two fixes were wrong.**
+Worth recording, because the countdown is the plan's only clock-reading feature
+and step 5 will touch these same cases. The rewritten self-check failed ~2% of
+runs, found by stressing it 400× rather than by the single green run that would
+otherwise have shipped it. Two attempts missed:
+
+1. *Sample the clock once and share it.* Necessary — two `date` reads straddle a
+   second boundary now and then — but not sufficient. The harness's `date` and
+   jq's `now` are still different instants, so `now + 5400` has ~5399s left by
+   the time it renders.
+2. *Pick an offset away from the h/m boundary.* Wrong premise. 3600s is not
+   fragile because it sits on a boundary; **every** exact offset is fragile,
+   because the gap between the two clock reads is unavoidable. 5400 just moved
+   which minute was wrong.
+
+What works is not asserting an exact minute (`(1h` matches both `1h29m` and
+`1h30m`), and comparing the two renders with the countdown masked to `(T)` — so
+the equality tests what the conversion owes, and not the one field whose whole
+job is to differ between two clock reads.
 
 These fixtures depend on a `render_rel` helper in the runner — build that first
 (P0 below), so they are written against it the first time.
@@ -253,6 +326,19 @@ Numbered by priority above; execute in this order, which is not the same thing.
 The principle: land the cheap parts first, and sequence the one genuinely complex
 piece last and behind a real usage signal.
 
+**Status.** Kept current as each step lands, but treat it as a summary, not the
+source of truth — `prompt.md` derives the next step by probing the repo, and the
+repo wins if these ever disagree. Steps are not PRs; see
+[How this ships](#how-this-ships) for where the review boundaries fall.
+
+| # | Step | State | Commit |
+|---|------|-------|--------|
+| 1 | P2 — effort indicator | done | `3262d05` |
+| 2 | P0 — `render_rel` helper | done | `65d9615` |
+| 3 | P1 — reset countdown | done | `128bff9` |
+| 4 | Live with it — human call | next — **ask the user** | — |
+| 5 | Three-tier width ladder | gated on 4 | — |
+
 1. **P2 — effort indicator** (~15 min). Despite being second on value. It touches
    the jq contract and the `model_seg` construction — the same two sites P1
    touches, but in their simplest form. Landing it first means the contract has
@@ -261,7 +347,9 @@ piece last and behind a real usage signal.
 2. **P0 — `render_rel` helper** (~10 min). Before P1's fixtures exist, so they are
    written against it rather than retrofitted.
 3. **P1 — reset countdown** (~45 min), countdowns load-bearing in the existing
-   width ladder. No fitting-logic changes.
+   width ladder. No fitting-logic changes. Landed as specified; the sketches for
+   `remaining`, the jq contract and `five_rem_seg` all survived contact with the
+   code unchanged. Only the test list needed correcting — see P1's Tests section.
 4. **Live with it for a few days.** The fixtures cannot tell you whether a
    countdown is worth its columns; only using it can.
 5. **Three-tier drop order** — the `percentages > path > countdowns` ladder in
@@ -273,6 +361,37 @@ All of this lands before any Tier 2 work. Git dirty state is the most-requested
 missing field, but it costs a second `git` process against an explicit design
 constraint — worth deciding on its own merits, not bundled in behind changes that
 cost nothing.
+
+## How this ships
+
+**One PR per user-visible feature.** That is what this repo already does: PRs #3,
+#4 and #5 each landed a single status-line feature with its script change, its
+fixtures and its tests together, as one reviewable unit. Scaffolding and docs went
+in direct — `f4f2be0` (this plan) and `3fd4e7e` (`plan.md`) carry no PR number.
+
+So the steps in the table above do **not** map one-to-one onto PRs:
+
+| Steps | Ships as |
+|-------|----------|
+| 1 (P2, effort) | its own PR — merged as #4 |
+| 2 + 3 (`render_rel` + countdown) | **one PR**, opened at the end of step 3 |
+| 5 (width ladder) | its own PR, if step 4 says build it |
+
+**Why 2 and 3 travel together.** Step 2 landed a test helper whose only caller
+today is its own self-check, plus a correction to how step 3 gets the time. On its
+own that PR reads as "a helper for a feature that does not exist yet" — there is
+nothing to review, because the question a reviewer cares about (does the countdown
+work, is it worth its columns) is not in the diff. Alongside P1 the same commits
+read as one coherent change: helper, fix, feature. Holding them also avoids a
+rebase, since step 3 will touch `render_rel`'s neighbourhood when it adds the
+countdown fixtures.
+
+Keep them as separate *commits* either way — the split is worth reading in
+`git log`; it is only the review boundary that is wrong.
+
+**Per `prompt.md`, no session opens a PR on its own.** Steps get committed, not
+pushed. Opening the PR is a human call, and for the step-2+3 bundle the moment is
+after step 3 is green — not before.
 
 ## Explicitly not doing
 

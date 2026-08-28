@@ -10,8 +10,11 @@ Do **one step**, verify it, commit it, stop. Do not batch steps.
 
 ## 1. Work out which step is next
 
-Do not assume. Do not trust this file to have been updated. Determine it from the
-repo, in this order — the first unchecked probe is your step:
+Do not assume. Do not trust this file or `plan2.md` to have been updated —
+§5 obliges every session to leave the plan current, but a session can crash or be
+interrupted between the code landing and the plan catching up, and that gap is
+exactly when you are reading. Determine the step from the repo, in this order —
+the first unchecked probe is your step:
 
 ```sh
 cd /Users/michaeldimmitt/scripts
@@ -116,7 +119,38 @@ Report failures with the actual output. Never report a step done that is not.
 
 ---
 
-## 5. Commit and stop
+## 5. Update the plan — part of the step, not an afterthought
+
+`plan2.md` must leave your session describing the repo as it now is. Do this
+**before** committing, so it lands in the same commit as the code — a plan
+updated in a later commit is a plan that was wrong in between.
+
+Three things to bring current:
+
+1. **The status table** in the plan's `## Order` section. Mark your step done and
+   record its commit sha. If you added, split, or dropped a step, change the rows
+   to match.
+2. **Any claim your step proved wrong.** Not just field names — sketches that did
+   not survive contact with the code, effort estimates that were off by more than
+   a factor of two, edge cases that turned out impossible or that turned out to be
+   the *only* case. Correct the text in place and say so in the commit body.
+3. **Decisions the step resolved.** If the plan left something open and you
+   settled it, write down what you chose and why. The next session has no memory
+   and will otherwise re-litigate it, possibly differently.
+
+When you correct something, prefer rewriting the claim over appending a note to
+it — but keep the original reasoning visible when the *mistake itself* is
+instructive, marked as corrected and dated. A reader who cannot tell which
+version is current has been given two plans, not one.
+
+**This does not make the plan authoritative about progress.** Section 1 still
+derives the next step by probing the repo, and the repo still wins on any
+disagreement. Keeping the plan current is how you stop the two from drifting; it
+is not permission to trust it instead of looking.
+
+---
+
+## 6. Commit and stop
 
 One commit per step, matching the repo's Conventional Commits style
 (`git log --oneline -10` for examples):
@@ -133,7 +167,10 @@ Then **stop**. Do not start the next step. Report:
 
 - which step you completed
 - test results (counts, not "all passed")
-- anything you changed in `plan2.md` and why
+- what you changed in `plan2.md` and why — including the status table. If the
+  answer is "only the status table", say that explicitly; it means you found
+  nothing in the plan that contradicted the code, which is a finding, not a
+  blank. Never leave this line out.
 - what the next step is, and whether it is blocked on the user
 
 ---

@@ -2,8 +2,8 @@
 # Claude Code status line.
 #
 # Renders: directory, git sha/branch, model, context-window usage, 5h/7d
-# rate-limit usage, and cost (this command, then the session total). Reads the
-# session JSON that Claude Code pipes on stdin.
+# rate-limit usage with time until each window resets, and cost (this command,
+# then the session total). Reads the session JSON that Claude Code pipes on stdin.
 # Schema and behaviour: https://code.claude.com/docs/en/statusline
 #
 # Tests: resources/extras/statusline-tests/run-tests.sh
@@ -64,9 +64,9 @@ fi
 # risks being killed before it prints. jq also does all the arithmetic, keeping
 # bash away from float formatting entirely.
 #
-# Contract: 11 lines, in order, empty when unavailable:
+# Contract: 13 lines, in order, empty when unavailable:
 #   cwd, model, effort, cost, ctx_used_k, ctx_size_k, ctx_pct, five_pct,
-#   week_pct, cmd_cost, new_state
+#   five_rem, week_pct, week_rem, cmd_cost, new_state
 jq_program='
   def finite:
     if type == "number" and (isnan | not) and (isinfinite | not)
@@ -84,9 +84,30 @@ jq_program='
   # Floor, never round: 99.6% must not display as a limit-reached 100%.
   def show: if . == null then "" else (floor | tostring) end;
 
+  # A resets_at epoch rendered as time-from-now. Two units, never three: "2d4h",
+  # "1h23m", "47m". A third unit is more precision than a glanceable bar carries,
+  # and the segment has to survive the width budget.
+  #
+  # A timestamp at or before now yields null, not a negative duration. Claude Code
+  # drops a window once its resets_at passes, so a stale payload is the realistic
+  # way to get one, and the honest render is no countdown rather than "-3m".
+  def remaining($now):
+    finite
+    | if . == null or . <= $now then null
+      else (. - $now) as $s
+      | if $s >= 86400 then "\($s / 86400 | floor)d\($s % 86400 / 3600 | floor)h"
+        elif $s >= 3600 then "\($s / 3600 | floor)h\($s % 3600 / 60 | floor)m"
+        else "\($s / 60 | floor)m" end
+      end;
+
+  # "Now" comes from jq rather than bash: $EPOCHSECONDS needs bash 5, and stock
+  # macOS ships 3.2, where the countdown would have silently never rendered. jq
+  # already runs, so its `now` costs no extra process and needs no version floor.
+  (now | floor) as $n
+
   # The previous render left "total base active" here, empty on the first render.
   # Guard every field: a truncated state file must not take the bar down.
-  ($state | split(" ")) as $s
+  | ($state | split(" ")) as $s
   | ($s[0] | tonumber? // null) as $prev
   | ($s[1] | tonumber? // 0) as $base
   | ($s[2] | tonumber? // 0) as $act
@@ -123,7 +144,11 @@ jq_program='
        then ((.context_window.used_percentage | pct) // ($tok * 100 / $size)) | show
        else "" end),
       (.rate_limits.five_hour.used_percentage | pct | show),
+      # Each window is independently optional, and so is its resets_at within a
+      # window that is present: a percentage with no timestamp renders alone.
+      (.rate_limits.five_hour.resets_at | remaining($n) // ""),
       (.rate_limits.seven_day.used_percentage | pct | show),
+      (.rate_limits.seven_day.resets_at | remaining($n) // ""),
       (if $turn == null then "" else ($total - $turn.b | tostring) end),
       (if $turn == null then $state
        else "\($total) \($turn.b) \($turn.a)" end)
@@ -139,7 +164,9 @@ ctx_used_k=""
 ctx_size_k=""
 ctx_pct=""
 five_pct=""
+five_rem=""
 week_pct=""
+week_rem=""
 cmd_cost=""
 new_state=""
 
@@ -157,9 +184,11 @@ if command -v jq >/dev/null 2>&1; then
       6) ctx_size_k=$value ;;
       7) ctx_pct=$value ;;
       8) five_pct=$value ;;
-      9) week_pct=$value ;;
-      10) cmd_cost=$value ;;
-      11) new_state=$value ;;
+      9) five_rem=$value ;;
+      10) week_pct=$value ;;
+      11) week_rem=$value ;;
+      12) cmd_cost=$value ;;
+      13) new_state=$value ;;
     esac
   done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
 fi
@@ -218,14 +247,30 @@ if [ -n "$ctx_pct" ]; then
     "  ctx ${ctx_used_k}k/${ctx_size_k}k (${ctx_pct}%)"
 fi
 
+# A percentage says how much of the window is spent; the countdown says how long
+# you have to spend the rest. 82% with twelve minutes left and 82% with four
+# hours left call for opposite decisions, and the number alone cannot tell them
+# apart. Left uncoloured -- the colour here means "approaching a limit", which is
+# the percentage's job; a countdown qualifies that number rather than restating
+# it. Built as its own string so an absent one leaves the segment byte-identical
+# to what it was before countdowns existed.
+five_rem_seg=""
+[ -n "$five_rem" ] && five_rem_seg=" (${five_rem})"
+week_rem_seg=""
+[ -n "$week_rem" ] && week_rem_seg=" (${week_rem})"
+
 if [ -n "$five_pct" ]; then
   pct_colour "$five_pct"
-  add_segment "  ${CYAN}5h${RESET} ${_colour}${five_pct}%${RESET}" "  5h ${five_pct}%"
+  add_segment \
+    "  ${CYAN}5h${RESET} ${_colour}${five_pct}%${RESET}${five_rem_seg}" \
+    "  5h ${five_pct}%${five_rem_seg}"
 fi
 
 if [ -n "$week_pct" ]; then
   pct_colour "$week_pct"
-  add_segment "  ${CYAN}7d${RESET} ${_colour}${week_pct}%${RESET}" "  7d ${week_pct}%"
+  add_segment \
+    "  ${CYAN}7d${RESET} ${_colour}${week_pct}%${RESET}${week_rem_seg}" \
+    "  7d ${week_pct}%${week_rem_seg}"
 fi
 
 # `printf -v` rather than $(printf ...): command substitution forks a subshell

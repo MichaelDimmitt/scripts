@@ -43,6 +43,22 @@ render() { # $1 = payload file -> plain (ANSI-stripped) status line
   bash "$script" < "$1" 2>/dev/null | strip_ansi
 }
 
+# A fixture holding an absolute future `resets_at` does not fail when it goes
+# stale -- it passes wrongly, asserting past-timestamp behaviour under a name
+# that says the opposite. So rate-limit fixtures store `resets_in`, seconds from
+# now, and this converts it to the absolute epoch the script expects, at render
+# time. Negative values are the point too: -60 is always "a minute ago".
+#
+# The `date` fork is fine here -- the no-forks rule covers the render path, and
+# this is the harness. Only fixtures that carry `resets_in` need this; the rest
+# keep using render(), and that containment is deliberate.
+render_rel() { # $1 = payload file -> plain (ANSI-stripped) status line
+  jq --argjson now "$(date +%s)" \
+    '(.rate_limits[]? | select(.resets_in != null))
+     |= (.resets_at = $now + .resets_in | del(.resets_in))' "$1" \
+  | bash "$script" 2>/dev/null | strip_ansi
+}
+
 ok() { pass=$((pass + 1)); [ -n "${VERBOSE:-}" ] && printf '  ok    %s\n' "$1"; return 0; }
 no() { fail=$((fail + 1)); printf '  FAIL  %s\n' "$1"; printf '        got: [%s]\n' "$2"; }
 
@@ -113,6 +129,10 @@ case_header "leaked epoch in used_percentage (upstream #52326)" "$out"
 dont "drops the epoch value"  "$out" "1785312000"
 dont "drops the bad 5h window" "$out" "5h"
 want "keeps the good 7d window" "$out" "7d 41%"
+# The countdown reads resets_at, the very field the clamp was written to defend
+# against leaking into used_percentage. Reading it must not resurrect the value:
+# the clamp guards the percentage, and the epoch stays off the bar either way.
+dont "no epoch via the countdown" "$out" "1785312000"
 pct_sane "percentages sane"   "$out"
 
 out=$(render "$fixtures/missing-ctx-size.json")
@@ -125,6 +145,9 @@ case_header "only five_hour present" "$out"
 want "shows 5h at zero"       "$out" "5h 0%"
 dont "omits 7d"               "$out" "7d"
 want "handles 1M context"     "$out" "/1000k"
+# This fixture's resets_at is a fixed past epoch, so it renders no countdown --
+# which is what makes it a regression guard that the segment is unchanged.
+dont "5h carries no countdown" "$out" "5h 0% ("
 
 out=$(render "$fixtures/high-usage.json")
 case_header "near-limit values" "$out"
@@ -150,6 +173,104 @@ case_header "model without an effort level" "$out"
 want "shows the bare model"   "$out" "model: Haiku 4.5  "
 dont "no empty parenthetical" "$out" "()"
 want "still shows 5h"         "$out" "5h 15%"
+
+# render_rel's own self-check: a relative fixture must reach the script as a
+# normal payload and render exactly as its absolute twin does.
+#
+# The twin is built here rather than being full.json itself. It used to be --
+# when the countdown did not exist, resets_at changed nothing about the output,
+# so any payload was a valid comparison. Now it is the field under test, and
+# full.json's epoch is a fixed date in the past: comparing against it would only
+# assert that a future countdown differs from no countdown, which is the feature
+# working, not the conversion working. Converting the same offset twice isolates
+# the one thing this case is for.
+#
+# Both the offset and the clock sampling are chosen to keep this deterministic,
+# and neither is arbitrary -- an earlier version of this case flaked ~2% of runs:
+#
+#   * No exact minute is asserted. There is always a gap between the harness
+#     reading the clock to build `resets_at` and jq reading its own to subtract
+#     from it, so a 5400s offset renders "1h29m" whenever that gap crosses a
+#     second -- and no offset avoids this, because the two readings are different
+#     instants by construction. Picking a "safe" offset away from the h/m
+#     boundary does not help; only not pinning the minute does.
+#   * One `date` sample, shared. Sampling separately here and inside render_rel
+#     means the two straddle a second boundary now and then, putting the twin's
+#     epoch 1s from the relative one's -- which is precisely the difference this
+#     case asserts does not exist. So the conversion is inlined here rather than
+#     calling render_rel, to pin both sides to the same clock reading.
+now=$(date +%s)
+jq '.rate_limits.five_hour |= (.resets_in = 5400 | del(.resets_at))' \
+  "$fixtures/full.json" > "$tmpdir/relative.json"
+jq --argjson now "$now" \
+  '.rate_limits.five_hour |= (.resets_at = $now + 5400)' \
+  "$fixtures/full.json" > "$tmpdir/absolute.json"
+out=$(jq --argjson now "$now" \
+  '(.rate_limits[]? | select(.resets_in != null))
+   |= (.resets_at = $now + .resets_in | del(.resets_in))' "$tmpdir/relative.json" \
+  | bash "$script" 2>/dev/null | strip_ansi)
+case_header "render_rel converts resets_in to an epoch" "$out"
+want "renders the whole line"  "$out" "5h 23%"
+want "converts to a countdown" "$out" "5h 23% (1h"
+dont "no resets_in leaks out"  "$out" "5400"
+# Compared with the countdown masked out. The two renders come from two jq
+# processes, each reading its own `now`, so the minute can legitimately differ by
+# one between them -- comparing raw strings reintroduces the flake at a lower
+# rate rather than fixing it. Masking asserts what the conversion is actually
+# responsible for: that resets_in produces the same payload as the equivalent
+# absolute epoch, everywhere except the field whose whole job is to track a clock.
+mask_countdown() { printf '%s' "$1" | sed 's/(\([0-9]*d\)\{0,1\}[0-9]*[hm][0-9]*m\{0,1\})/(T)/g'; }
+if [ "$(mask_countdown "$out")" = "$(mask_countdown "$(render "$tmpdir/absolute.json")")" ]; then
+  ok "matches the absolute-epoch render"
+else
+  no "matches the absolute-epoch render" "$out"
+fi
+
+# The comparison above pins its own clock, which means it no longer runs
+# render_rel itself. The four countdown cases do, but assert this directly too --
+# a helper whose self-check stopped calling it is how it rots unnoticed. Asserted
+# loosely on purpose: anything exact enough to pin the minute would reintroduce
+# the boundary flake this case just removed.
+out=$(render_rel "$tmpdir/relative.json")
+case_header "render_rel is still the path under test" "$out"
+want "renders a countdown"     "$out" "5h 23% (1h"
+dont "no resets_in leaks out"  "$out" "5400"
+
+# --- rate-limit reset countdowns --------------------------------------------
+# All four use render_rel: an absolute future epoch in a fixture goes stale and
+# then passes wrongly, asserting the opposite of what its name claims.
+
+out=$(render_rel "$fixtures/resets-relative.json")
+case_header "both windows reset in the future" "$out"
+want "5h countdown in h/m"    "$out" "5h 23% (1h23m)"
+want "7d countdown in d/h"    "$out" "7d 41% (2d4h)"
+# Two units, never three: a bar this dense cannot carry more precision, and the
+# third unit is what pushes the segment past its width budget. "2d4h30m" would
+# match the two asserts above just as well, so check the shape explicitly.
+dont "no three-unit duration" "$out" "d4h30m"
+dont "no seconds unit"        "$out" "s)"
+
+out=$(render_rel "$fixtures/resets-past.json")
+case_header "resets_at already passed" "$out"
+want "keeps the 5h percentage" "$out" "5h 55%"
+want "keeps the 7d percentage" "$out" "7d 41%"
+dont "no negative duration"   "$out" "(-"
+dont "no empty parenthetical" "$out" "()"
+
+# The boundary the remaining filter guards: under a minute the window has not
+# reset yet, so "0m" is the honest reading rather than dropping the countdown.
+out=$(render_rel "$fixtures/resets-imminent.json")
+case_header "resets in seconds" "$out"
+want "floors to 0m"           "$out" "5h 97% (0m)"
+dont "no seconds leak"        "$out" "8"
+
+# A window may carry a percentage with no timestamp. That segment must render
+# exactly as it did before countdowns existed -- the strongest regression signal
+# available, so assert the whole string, not just its absence of parentheses.
+out=$(render "$fixtures/resets-missing.json")
+case_header "used_percentage without resets_at" "$out"
+want "5h segment unchanged"   "$out" "  5h 33%  7d 44%"
+dont "no empty parenthetical" "$out" "()"
 
 # Non-git directory: the branch field must not leak a placeholder.
 mkdir -p "$tmpdir/plain"

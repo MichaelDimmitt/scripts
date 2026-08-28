@@ -1,0 +1,27 @@
+{
+  "_comment": "A window resetting in seconds -- the boundary where 'expires between renders' lives, and the only case that exercises the transition the remaining filter guards. Under a minute floors to '0m' rather than vanishing: the window has not reset yet, and '0m' is the honest reading of 'any moment now'.",
+  "cwd": "/Users/example/projects/my-app",
+  "model": {
+    "id": "claude-opus-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 30,
+    "current_usage": {
+      "input_tokens": 50000,
+      "output_tokens": 1000,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 5000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 97,
+      "resets_in": 8
+    }
+  }
+}
