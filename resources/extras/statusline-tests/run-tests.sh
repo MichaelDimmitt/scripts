@@ -43,6 +43,22 @@ render() { # $1 = payload file -> plain (ANSI-stripped) status line
   bash "$script" < "$1" 2>/dev/null | strip_ansi
 }
 
+# A fixture holding an absolute future `resets_at` does not fail when it goes
+# stale -- it passes wrongly, asserting past-timestamp behaviour under a name
+# that says the opposite. So rate-limit fixtures store `resets_in`, seconds from
+# now, and this converts it to the absolute epoch the script expects, at render
+# time. Negative values are the point too: -60 is always "a minute ago".
+#
+# The `date` fork is fine here -- the no-forks rule covers the render path, and
+# this is the harness. Only fixtures that carry `resets_in` need this; the rest
+# keep using render(), and that containment is deliberate.
+render_rel() { # $1 = payload file -> plain (ANSI-stripped) status line
+  jq --argjson now "$(date +%s)" \
+    '(.rate_limits[]? | select(.resets_in != null))
+     |= (.resets_at = $now + .resets_in | del(.resets_in))' "$1" \
+  | bash "$script" 2>/dev/null | strip_ansi
+}
+
 ok() { pass=$((pass + 1)); [ -n "${VERBOSE:-}" ] && printf '  ok    %s\n' "$1"; return 0; }
 no() { fail=$((fail + 1)); printf '  FAIL  %s\n' "$1"; printf '        got: [%s]\n' "$2"; }
 
@@ -150,6 +166,22 @@ case_header "model without an effort level" "$out"
 want "shows the bare model"   "$out" "model: Haiku 4.5  "
 dont "no empty parenthetical" "$out" "()"
 want "still shows 5h"         "$out" "5h 15%"
+
+# render_rel's own self-check. The countdown itself does not exist yet, so this
+# asserts only the conversion: a relative fixture must reach the script as a
+# normal payload and render exactly as its absolute twin does. Without this the
+# helper is untested until the fixtures that depend on it arrive.
+jq '.rate_limits.five_hour |= (.resets_in = 3600 | del(.resets_at))' \
+  "$fixtures/full.json" > "$tmpdir/relative.json"
+out=$(render_rel "$tmpdir/relative.json")
+case_header "render_rel converts resets_in to an epoch" "$out"
+want "renders the whole line"  "$out" "5h 23%"
+dont "no resets_in leaks out"  "$out" "3600"
+if [ "$out" = "$(render "$fixtures/full.json")" ]; then
+  ok "matches the absolute-epoch render"
+else
+  no "matches the absolute-epoch render" "$out"
+fi
 
 # Non-git directory: the branch field must not leak a placeholder.
 mkdir -p "$tmpdir/plain"
