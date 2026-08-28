@@ -26,6 +26,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
+| `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
@@ -50,6 +51,7 @@ just tell-installed-skills
 just generate-cask-aliases
 just install-checkout-release
 just install-statusline
+just install-aliases
 ```
 
 ---
@@ -83,10 +85,24 @@ Source it from your RC file to keep these alongside the generated aliases:
 source ~/scripts/resources/extras/brew-cask-aliases-additional
 ```
 
-`generate_cask-aliases.sh` instead copies the file to `~/.brew-cask-aliases-additional`
-and sources *that* from `~/.bashrc`. Either path works, but pick one — a home-dir
-copy stops tracking the repo the moment this file changes. Re-run
-`just generate-cask-aliases` (or `regen-aliases`) after editing it to refresh the copy.
+Or install the copy that `generate_cask-aliases.sh` uses:
+
+```sh
+just install-aliases
+```
+
+That copies the file to `~/.brew-cask-aliases-additional` and sources it from
+your shell's interactive RC — `.zshrc` under zsh, `.bashrc` under bash. Re-run it
+after editing the aliases; it is idempotent, and it collapses the duplicate
+`source` lines older versions of the generate script left behind.
+
+Either path works, but pick one — a home-dir copy stops tracking the repo the
+moment this file changes.
+
+`just generate-cask-aliases` (or `regen-aliases`) also refreshes this copy, since
+it delegates to the same installer. Use it when you have added or removed a
+Homebrew cask; use `just install-aliases` when you have only edited these aliases,
+as it skips the (slow) cask scan and needs no brew at all.
 
 #### What's in `brew-cask-aliases-additional`
 
