@@ -50,3 +50,7 @@ echo "Existing files:"
 for f in ~/.zshrc ~/.zprofile ~/.zshenv ~/.bashrc ~/.bash_profile ~/.profile ~/.config/fish/config.fish; do
   [ -f "$f" ] && echo "  $f"
 done
+
+# The loop's last [ -f ] test decides the exit status, so a missing final
+# candidate (commonly the fish config) would report failure on a good run.
+exit 0
