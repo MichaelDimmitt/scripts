@@ -315,7 +315,7 @@ repo wins if these ever disagree. Steps are not PRs; see
 |---|------|-------|--------|
 | 1 | P2 — effort indicator | done | `3262d05` |
 | 2 | P0 — `render_rel` helper | done | `65d9615` |
-| 3 | P1 — reset countdown | done | `e0548dd` |
+| 3 | P1 — reset countdown | done | `128bff9` |
 | 4 | Live with it — human call | next — **ask the user** | — |
 | 5 | Three-tier width ladder | gated on 4 | — |
 
