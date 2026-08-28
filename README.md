@@ -25,6 +25,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor) |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
+| `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
@@ -48,6 +49,7 @@ just tell-claude-skills
 just tell-installed-skills
 just generate-cask-aliases
 just install-checkout-release
+just install-statusline
 ```
 
 ---
@@ -101,19 +103,31 @@ copy stops tracking the repo the moment this file changes. Re-run
 
 See [statusline-setup.md](./resources/extras/statusline-setup.md) for the full setup guide, including a no-clone install path.
 
-To install the status line on a new machine, tell Claude:
+To install or update it:
+
+```sh
+just install-statusline
+```
+
+That copies the script to `~/.claude/`, sets the executable bit (without it the
+status line silently does not appear), and checks that `settings.json` actually
+points at the copy with `refreshInterval` set.
+
+**Re-run it after every pull that touches the script.** Claude Code runs the
+copy, not the repo file, so the two drift apart the moment this file changes —
+and a stale bar looks perfectly healthy, it just quietly lacks whatever was added
+since. The installer is idempotent and prints `SKIP: already current` when there
+is nothing to do, so it is safe to run habitually.
+
+Alternatively, tell Claude:
 
 > Use the `statusline-setup` agent to configure my statusLine from `~/scripts/resources/extras/statusline-command.sh`.
 
-> **Note:** After cloning, make the script executable or the statusline will silently not appear:
-> ```sh
-> chmod +x ~/scripts/resources/extras/statusline-command.sh
-> ```
-
-Or do it manually:
+Or do it by hand:
 
 ```sh
 cp ~/scripts/resources/extras/statusline-command.sh ~/.claude/statusline-command.sh
+chmod +x ~/.claude/statusline-command.sh
 ```
 
 Then add this to `~/.claude/settings.json`:

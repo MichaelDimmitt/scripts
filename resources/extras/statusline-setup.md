@@ -63,8 +63,13 @@ simply re-baselines on its next render.
 > Use the `statusline-setup` agent to configure my statusLine from `~/statusline-command.sh`.
 
 > **A standalone copy does not update when the repo does.** Re-run the `curl`
-> above (or `cp` from a clone) after pulling changes, or fixes stay in the repo
-> and never reach your bar.
+> above after pulling changes, or fixes stay in the repo and never reach your
+> bar. This is not hypothetical: an installed copy once sat two merged features
+> behind without anything reporting it — a stale bar renders perfectly, it just
+> lacks whatever came after the copy.
+>
+> From a clone, `just install-statusline` does this for you and additionally
+> checks that `settings.json` points at the copy with `refreshInterval` set.
 
 ## Settings
 
