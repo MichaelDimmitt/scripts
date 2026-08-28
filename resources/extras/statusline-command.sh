@@ -64,9 +64,9 @@ fi
 # risks being killed before it prints. jq also does all the arithmetic, keeping
 # bash away from float formatting entirely.
 #
-# Contract: 10 lines, in order, empty when unavailable:
-#   cwd, model, cost, ctx_used_k, ctx_size_k, ctx_pct, five_pct, week_pct,
-#   cmd_cost, new_state
+# Contract: 11 lines, in order, empty when unavailable:
+#   cwd, model, effort, cost, ctx_used_k, ctx_size_k, ctx_pct, five_pct,
+#   week_pct, cmd_cost, new_state
 jq_program='
   def finite:
     if type == "number" and (isnan | not) and (isinfinite | not)
@@ -112,6 +112,10 @@ jq_program='
   | [
       (.workspace.current_dir // .cwd // ""),
       (.model.display_name // ""),
+      # Top-level, not under .model -- and absent entirely for models without
+      # the effort parameter. Passed through verbatim: it is a display string,
+      # never branched on, so a level added upstream shows rather than breaks.
+      (.effort.level // ""),
       (.cost.total_cost_usd | finite | if . == null then "" else tostring end),
       (if $ctx_ok then (($tok + 500) / 1000 | floor | tostring) else "" end),
       (if $ctx_ok then (($size + 500) / 1000 | floor | tostring) else "" end),
@@ -129,6 +133,7 @@ jq_program='
 
 cwd=""
 model=""
+effort=""
 cost=""
 ctx_used_k=""
 ctx_size_k=""
@@ -146,14 +151,15 @@ if command -v jq >/dev/null 2>&1; then
     case $field in
       1) cwd=$value ;;
       2) model=$value ;;
-      3) cost=$value ;;
-      4) ctx_used_k=$value ;;
-      5) ctx_size_k=$value ;;
-      6) ctx_pct=$value ;;
-      7) five_pct=$value ;;
-      8) week_pct=$value ;;
-      9) cmd_cost=$value ;;
-      10) new_state=$value ;;
+      3) effort=$value ;;
+      4) cost=$value ;;
+      5) ctx_used_k=$value ;;
+      6) ctx_size_k=$value ;;
+      7) ctx_pct=$value ;;
+      8) five_pct=$value ;;
+      9) week_pct=$value ;;
+      10) cmd_cost=$value ;;
+      11) new_state=$value ;;
     esac
   done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
 fi
@@ -244,8 +250,15 @@ if [ -n "$cost" ]; then
   fi
 fi
 
+# Effort hangs off the model name rather than standing alone: without a model to
+# qualify, a bare "(high)" says nothing. Left uncoloured on purpose -- the
+# green/yellow/red vocabulary here means "approaching a limit", and effort is not
+# a limit, so colouring it would overload a signal that currently means one thing.
 model_seg=""
-[ -n "$model" ] && model_seg="  model: $model"
+if [ -n "$model" ]; then
+  model_seg="  model: $model"
+  [ -n "$effort" ] && model_seg="$model_seg ($effort)"
+fi
 
 # --- Fit to the terminal ----------------------------------------------------
 # Claude Code captures stdout, so tput cannot see the terminal; it exports

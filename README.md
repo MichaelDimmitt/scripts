@@ -90,6 +90,8 @@ copy stops tracking the repo the moment this file changes. Re-run
 
 | Name | Type | Purpose |
 |------|------|---------|
+| `cl` | alias | Start a fresh Claude Code session with `--dangerously-skip-permissions` |
+| `cx` | alias | Start a Codex session with `--yolo` (approval prompts bypassed) |
 | `cresume` | alias | Resume the most recent Claude Code session with `--dangerously-skip-permissions` |
 | `cchats` | alias | List previous Claude Code sessions for the current project (newest first) |
 | `cresumef <session-id>` | function | Resume a specific Claude Code session by ID (IDs come from `cchats`) with permissions bypass |

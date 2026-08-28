@@ -1,0 +1,26 @@
+{
+  "_comment": "Model present, no effort block -- the shape a model without the reasoning effort parameter produces. The model segment must render exactly as it did before effort existed.",
+  "cwd": "/Users/example/projects/my-app",
+  "workspace": {
+    "current_dir": "/Users/example/projects/my-app"
+  },
+  "model": {
+    "id": "claude-haiku-4-5-20251001",
+    "display_name": "Haiku 4.5"
+  },
+  "context_window": {
+    "context_window_size": 200000,
+    "used_percentage": 12,
+    "current_usage": {
+      "input_tokens": 20000,
+      "output_tokens": 900,
+      "cache_creation_input_tokens": 3000,
+      "cache_read_input_tokens": 1000
+    }
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 15
+    }
+  }
+}

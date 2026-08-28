@@ -1,3 +1,9 @@
+# Start a fresh Claude session with permissions bypass enabled.
+alias cl="claude --dangerously-skip-permissions"
+
+# Same idea for Codex: start a session with approval prompts bypassed.
+alias cx="codex --yolo"
+
 # Resume Claude with permissions bypass enabled (toggle with Shift+Tab in Claude Code)
 # Use when you have safe tasks ahead (e.g. editing commits) and don't want constant permission prompts.
 alias cresume="claude -c --dangerously-skip-permissions"
