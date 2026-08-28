@@ -1,10 +1,10 @@
 #!/bin/bash
 # Stop hook: warns when context approaches the autocompact threshold (~167k tokens)
 
-WARN_THRESHOLD=130000   # 78% of 200k — ~37k runway before autocompact
-CRIT_THRESHOLD=150000   # 90% — final warning
-MAX_TOKENS=200000
-AUTOCOMPACT_AT=167000
+WARN_THRESHOLD=130000   # 65% of MAX_TOKENS — the % this script prints; ~37k before autocompact
+CRIT_THRESHOLD=150000   # 75% of MAX_TOKENS; ~17k before autocompact — final warning
+MAX_TOKENS=200000       # assumed context window
+AUTOCOMPACT_AT=167000   # estimated
 
 INPUT=$(cat)
 
