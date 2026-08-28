@@ -18,7 +18,8 @@ scripts/
 │   └── latest_release
 ├── resources/
 │   ├── docs/              # Architecture and agent guide documents
-│   ├── extras/            # Hand-maintained shell snippets to source from RC files
+│   ├── extras/            # Hand-maintained snippets to source from RC files,
+│   │                      #   plus Claude Code integrations (statusline, hooks)
 │   ├── mappings/          # Key→value lookup tables (pipe-delimited)
 │   ├── templates/         # (future) reusable output templates
 │   ├── lists/             # (future) static enumeration files

@@ -21,6 +21,10 @@ tell-skills:
 tell-claude-skills:
     bash tell/tell_claude_skills.sh
 
+# List every installed SKILL.md skill across Claude and Cursor
+tell-installed-skills:
+    bash tell/tell_installed_skills.sh
+
 # Generate shell aliases for every installed Homebrew cask
 generate-cask-aliases:
     bash generate/generate_cask-aliases.sh

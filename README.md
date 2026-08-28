@@ -21,6 +21,8 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_casks.sh` | tell | Report installed Homebrew casks |
 | `tell/tell_rcs.sh` | tell | Report shell RC files |
 | `tell/tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
+| `tell/tell_claude_skills.sh` | tell | Snapshot Claude Code skill and plugin locations |
+| `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor) |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
@@ -38,9 +40,12 @@ Requires [`just`](https://github.com/casey/just): `brew install just`
 
 ```sh
 just                        # list all commands
-just tell-casks
 just tell-ai-tools
+just tell-casks
+just tell-rcs
+just tell-skills
 just tell-claude-skills
+just tell-installed-skills
 just generate-cask-aliases
 just install-checkout-release
 ```
@@ -62,8 +67,11 @@ Hand-maintained additions that layer on top of generated output.
 | File | Purpose |
 |------|---------|
 | [brew-cask-aliases-additional](./resources/extras/brew-cask-aliases-additional) | Extra shell aliases to source alongside `~/.brew-cask-aliases` |
+| [context-monitor.sh](./resources/extras/context-monitor.sh) | Claude Code `Stop` hook that warns when a session nears the autocompact threshold |
+| [context-monitor-setup.md](./resources/extras/context-monitor-setup.md) | Setup guide for the context monitor hook — thresholds, tuning, and how to test it |
 | [statusline-command.sh](./resources/extras/statusline-command.sh) | Claude Code status line script that mirrors a bash PS1 (cwd, short SHA, branch in cyan) and adds model, context window usage, and rate-limit percentages |
 | [statusline-setup.md](./resources/extras/statusline-setup.md) | Setup guide for the status line — includes a no-clone install path using `curl` |
+| [statusline-tests/](./resources/extras/statusline-tests) | Fixture-driven test suite for the status line script (`./run-tests.sh`) |
 | [stashes.sh](./resources/extras/stashes.sh) | Shell functions `dump_stashes` and `dump_stashes_files` for exporting a range of git stashes to a text file |
 | [text-manipulation.sh](./resources/extras/text-manipulation.sh) | Shell utility functions for common text transformations |
 
@@ -72,6 +80,11 @@ Source it from your RC file to keep these alongside the generated aliases:
 ```sh
 source ~/scripts/resources/extras/brew-cask-aliases-additional
 ```
+
+`generate_cask-aliases.sh` instead copies the file to `~/.brew-cask-aliases-additional`
+and sources *that* from `~/.bashrc`. Either path works, but pick one — a home-dir
+copy stops tracking the repo the moment this file changes. Re-run
+`just generate-cask-aliases` (or `regen-aliases`) after editing it to refresh the copy.
 
 #### What's in `brew-cask-aliases-additional`
 
@@ -107,7 +120,36 @@ Then add this to `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/<you>/.claude/statusline-command.sh"
+    "command": "bash /Users/<you>/.claude/statusline-command.sh",
+    "refreshInterval": 30
+  }
+}
+```
+
+`refreshInterval` (seconds) keeps the rate-limit percentages current while the
+session sits idle — without it they freeze during long tool calls. See
+[statusline-setup.md](./resources/extras/statusline-setup.md#why-refreshinterval).
+
+### Claude Code context monitor
+
+A `Stop` hook that warns you as a session approaches autocompact, so you can
+wrap up deliberately instead of being compacted mid-task. See
+[context-monitor-setup.md](./resources/extras/context-monitor-setup.md) for
+thresholds and tuning.
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/scripts/resources/extras/context-monitor.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -169,6 +211,15 @@ Snapshots all Claude Code skill and plugin locations to a dated file (`~/claude-
 
 ```sh
 bash tell/tell_claude_skills.sh
+```
+
+---
+
+### `tell/tell_installed_skills.sh`
+Lists the name of every `SKILL.md`-based skill installed on the machine, grouped by source: Claude marketplace plugins, Claude global skills (`~/.claude/skills`), project-local `.claude/skills` directories, Cursor skills (`~/.cursor/skills`), and project-local `.cursor/skills` directories. Prints to stdout — use `tell_claude_skills.sh` instead when you want a dated file on disk.
+
+```sh
+bash tell/tell_installed_skills.sh
 ```
 
 ---
