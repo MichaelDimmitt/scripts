@@ -21,6 +21,10 @@ tell-skills:
 tell-claude-skills:
     bash tell/tell_claude_skills.sh
 
+# List the shell aliases this project installs and whether they are live
+tell-aliases:
+    bash tell/tell_aliases.sh
+
 # List every installed SKILL.md skill across Claude and Cursor
 tell-installed-skills:
     bash tell/tell_installed_skills.sh
