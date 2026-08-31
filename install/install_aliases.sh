@@ -8,19 +8,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Formatting for the closing hint. The copy-paste line is the one piece of
 # output the user must act on, so it gets bold + colour rather than blending
-# into the log above it.
-#
-# Guarded on stdout being a tty, the way Homebrew's formatter.sh does it:
-# piping or redirecting this script should yield plain text, not escape codes.
-if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
-else
-  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
-fi
+# into the log above it. The shared library guards on stdout being a tty, so
+# piping or redirecting this script yields plain text, not escape codes.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SRC="${SCRIPT_DIR}/../resources/extras/brew-cask-aliases-additional"
 DEST="$HOME/.brew-cask-aliases-additional"
 

@@ -10,12 +10,10 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAUNCH_FILE="${SCRIPT_DIR}/../resources/mappings/ai_tools_launch.txt"
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# Colours come from the shared library, which blanks them when stdout is not a
+# tty -- piping this script used to write raw escape codes.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
 found_count=0
 not_found_count=0
@@ -23,22 +21,22 @@ found_items=()
 
 print_header() {
     echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${CYAN}  $1${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo "${BOLD}${CYAN}  $1${RESET}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
 check_found() {
     local name="$1"
     local detail="$2"
-    echo -e "  ${GREEN}✔ ${BOLD}$name${NC}  ${detail}"
+    echo "  ${GREEN}✔ ${BOLD}$name${RESET}  ${detail}"
     found_items+=("$name")
     ((found_count++))
 }
 
 check_not_found() {
     local name="$1"
-    echo -e "  ${RED}✘${NC} $name"
+    echo "  ${RED}✘${RESET} $name"
     ((not_found_count++))
 }
 
@@ -172,7 +170,7 @@ if [[ -n "$code_cmd" ]]; then
         fi
     done
 else
-    echo -e "  ${YELLOW}⚠  VS Code CLI not found — skipping extension check${NC}"
+    echo "  ${YELLOW}⚠  VS Code CLI not found — skipping extension check${RESET}"
 fi
 
 # ----------------------------------------------------------
@@ -207,7 +205,7 @@ if [[ -n "$pip_list" ]]; then
         fi
     done
 else
-    echo -e "  ${YELLOW}⚠  pip not found — skipping Python SDK check${NC}"
+    echo "  ${YELLOW}⚠  pip not found — skipping Python SDK check${RESET}"
 fi
 
 # ----------------------------------------------------------
@@ -238,7 +236,7 @@ if [[ -n "$npm_global_list" ]]; then
         fi
     done
 else
-    echo -e "  ${YELLOW}⚠  npm not found — skipping Node SDK check${NC}"
+    echo "  ${YELLOW}⚠  npm not found — skipping Node SDK check${RESET}"
 fi
 
 # ----------------------------------------------------------
@@ -246,22 +244,22 @@ fi
 # ----------------------------------------------------------
 total=$((found_count + not_found_count))
 echo ""
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BOLD}  SUMMARY${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  ${GREEN}✔ Found:${NC}     ${BOLD}$found_count${NC} SaaS AI tools"
-echo -e "  ${RED}✘ Not found:${NC} $not_found_count items checked"
-echo -e "  ${CYAN}Total scanned:${NC} $total"
+echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo "${BOLD}  SUMMARY${RESET}"
+echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo "  ${GREEN}✔ Found:${RESET}     ${BOLD}$found_count${RESET} SaaS AI tools"
+echo "  ${RED}✘ Not found:${RESET} $not_found_count items checked"
+echo "  ${CYAN}Total scanned:${RESET} $total"
 echo ""
 
 if [[ $found_count -eq 0 ]]; then
-    echo -e "  ${YELLOW}No SaaS AI tools detected. You're living off the grid! 🏕️${NC}"
+    echo "  ${YELLOW}No SaaS AI tools detected. You're living off the grid! 🏕️${RESET}"
 elif [[ $found_count -le 5 ]]; then
-    echo -e "  ${GREEN}A few SaaS AI tools on board — nice and tidy. 👍${NC}"
+    echo "  ${GREEN}A few SaaS AI tools on board — nice and tidy. 👍${RESET}"
 elif [[ $found_count -le 10 ]]; then
-    echo -e "  ${GREEN}Solid SaaS AI toolkit! You're well-equipped. 🚀${NC}"
+    echo "  ${GREEN}Solid SaaS AI toolkit! You're well-equipped. 🚀${RESET}"
 else
-    echo -e "  ${GREEN}You're a SaaS AI power user! Impressive collection. 🤖${NC}"
+    echo "  ${GREEN}You're a SaaS AI power user! Impressive collection. 🤖${RESET}"
 fi
 echo ""
 
@@ -274,22 +272,22 @@ if [[ ${#found_items[@]} -eq 0 ]]; then
 fi
 
 if [[ ! -f "$LAUNCH_FILE" ]]; then
-    echo -e "  ${YELLOW}⚠  Lookup file not found: ${LAUNCH_FILE}${NC}"
-    echo -e "  ${YELLOW}   Place ai_tools_launch.txt in resources/mappings/ next to this script.${NC}"
+    echo "  ${YELLOW}⚠  Lookup file not found: ${LAUNCH_FILE}${RESET}"
+    echo "  ${YELLOW}   Place ai_tools_launch.txt in resources/mappings/ next to this script.${RESET}"
     echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}  INSTALLED SAAS AI TOOLS${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo "${BOLD}  INSTALLED SAAS AI TOOLS${RESET}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     for item in "${found_items[@]}"; do
-        echo -e "  ${GREEN}✔${NC} ${item}"
+        echo "  ${GREEN}✔${RESET} ${item}"
     done
     echo ""
     exit 0
 fi
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BOLD}  INSTALLED TOOLS & HOW TO OPEN${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo "${BOLD}  INSTALLED TOOLS & HOW TO OPEN${RESET}"
+echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
 for tool_name in "${found_items[@]}"; do
     # grep the lookup file for a line starting with this tool name
@@ -301,14 +299,14 @@ for tool_name in "${found_items[@]}"; do
         launch_cmd="${match#*| }"
         # trim leading whitespace from command
         launch_cmd="${launch_cmd#"${launch_cmd%%[![:space:]]*}"}"
-        printf "  ${GREEN}✔${NC} ${BOLD}%-34s${NC} ${YELLOW}→${NC}  %s\n" "$tool_name" "$launch_cmd"
+        printf "  ${GREEN}✔${RESET} ${BOLD}%-34s${RESET} ${YELLOW}→${RESET}  %s\n" "$tool_name" "$launch_cmd"
     else
         # tool found but no launch entry in lookup file
-        printf "  ${GREEN}✔${NC} ${BOLD}%-34s${NC} ${RED}(no launch command in lookup file)${NC}\n" "$tool_name"
+        printf "  ${GREEN}✔${RESET} ${BOLD}%-34s${RESET} ${RED}(no launch command in lookup file)${RESET}\n" "$tool_name"
     fi
 done
 
 echo ""
-echo -e "  ${CYAN}Lookup file:${NC} ${LAUNCH_FILE}"
-echo -e "  ${CYAN}Edit it to add or change launch commands.${NC}"
+echo "  ${CYAN}Lookup file:${RESET} ${LAUNCH_FILE}"
+echo "  ${CYAN}Edit it to add or change launch commands.${RESET}"
 echo ""

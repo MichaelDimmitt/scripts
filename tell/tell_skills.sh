@@ -5,21 +5,20 @@
 #  If ~/skills does not exist, offers to clone anthropics/skills
 # ============================================================
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$HOME/skills"
 ANTHROPIC_SKILLS_REPO="https://github.com/anthropics/skills"
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Colours come from the shared library, which blanks them when stdout is not a
+# tty -- `just tell-skills > notes.txt` used to write raw escape codes.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
 print_header() {
     echo ""
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${CYAN}  $1${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo "${BOLD}${CYAN}  $1${RESET}"
+    echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
 report_repo() {
@@ -30,7 +29,7 @@ report_repo() {
     print_header "$repo_name"
 
     if ! git -C "$repo_path" rev-parse --git-dir &>/dev/null; then
-        echo -e "  ${YELLOW}⚠  Not a git repository${NC}"
+        echo "  ${YELLOW}⚠  Not a git repository${RESET}"
         return
     fi
 
@@ -41,9 +40,9 @@ report_repo() {
     last_commit=$(git -C "$repo_path" log -1 --format="%s" 2>/dev/null)
     last_date=$(git -C "$repo_path" log -1 --format="%ar" 2>/dev/null)
 
-    echo -e "  ${CYAN}Remote:${NC}  $remote_url"
-    echo -e "  ${CYAN}Branch:${NC}  $branch"
-    echo -e "  ${CYAN}Last commit:${NC}  $last_commit ${YELLOW}($last_date)${NC}"
+    echo "  ${CYAN}Remote:${RESET}  $remote_url"
+    echo "  ${CYAN}Branch:${RESET}  $branch"
+    echo "  ${CYAN}Last commit:${RESET}  $last_commit ${YELLOW}($last_date)${RESET}"
 
     # Up to date check
     git -C "$repo_path" fetch origin --quiet 2>/dev/null
@@ -52,21 +51,21 @@ report_repo() {
     remote_sha=$(git -C "$repo_path" rev-parse "origin/$branch" 2>/dev/null)
 
     if [[ "$local_sha" == "$remote_sha" ]]; then
-        echo -e "  ${GREEN}✔ Up to date${NC}"
+        echo "  ${GREEN}✔ Up to date${RESET}"
     else
         local behind
         behind=$(git -C "$repo_path" rev-list --count HEAD.."origin/$branch" 2>/dev/null)
-        echo -e "  ${YELLOW}⚠  $behind commit(s) behind origin/$branch${NC}"
+        echo "  ${YELLOW}⚠  $behind commit(s) behind origin/$branch${RESET}"
     fi
 
     # List skills (top-level dirs and .md files, excluding .git)
     echo ""
-    echo -e "  ${BOLD}Skills available:${NC}"
+    echo "  ${BOLD}Skills available:${RESET}"
     while IFS= read -r item; do
         if [[ -d "$repo_path/$item" ]]; then
-            echo -e "    ${GREEN}▸${NC} $item/"
+            echo "    ${GREEN}▸${RESET} $item/"
         else
-            echo -e "    ${GREEN}▸${NC} $item"
+            echo "    ${GREEN}▸${RESET} $item"
         fi
     done < <(ls "$repo_path" | grep -v '^\.git$')
 }
@@ -75,25 +74,25 @@ report_repo() {
 
 if [[ ! -d "$SKILLS_DIR" ]]; then
     echo ""
-    echo -e "${YELLOW}⚠  ~/skills does not exist.${NC}"
+    echo "${YELLOW}⚠  ~/skills does not exist.${RESET}"
     echo ""
     printf "Would you like to clone anthropics/skills into ~/skills? [y/N] "
     read -r answer
     case "$answer" in
         [yY]|[yY][eE][sS])
             echo ""
-            echo -e "${CYAN}Cloning $ANTHROPIC_SKILLS_REPO ...${NC}"
+            echo "${CYAN}Cloning $ANTHROPIC_SKILLS_REPO ...${RESET}"
             if git clone "$ANTHROPIC_SKILLS_REPO" "$SKILLS_DIR"; then
-                echo -e "${GREEN}✔ Cloned successfully.${NC}"
+                echo "${GREEN}✔ Cloned successfully.${RESET}"
                 echo ""
                 report_repo "$SKILLS_DIR"
             else
-                echo -e "${RED}✘ Clone failed. Check your network connection and try again.${NC}"
+                echo "${RED}✘ Clone failed. Check your network connection and try again.${RESET}"
                 exit 1
             fi
             ;;
         *)
-            echo -e "  Skipping. To add manually: git clone $ANTHROPIC_SKILLS_REPO ~/skills"
+            echo "  Skipping. To add manually: git clone $ANTHROPIC_SKILLS_REPO ~/skills"
             echo ""
             exit 0
             ;;
@@ -118,8 +117,8 @@ elif [[ $repo_count -gt 0 ]]; then
     done
 else
     echo ""
-    echo -e "${YELLOW}⚠  ~/skills exists but contains no git repositories.${NC}"
-    echo -e "  Add repos manually or run: git clone $ANTHROPIC_SKILLS_REPO ~/skills/anthropic"
+    echo "${YELLOW}⚠  ~/skills exists but contains no git repositories.${RESET}"
+    echo "  Add repos manually or run: git clone $ANTHROPIC_SKILLS_REPO ~/skills/anthropic"
 fi
 
 echo ""
