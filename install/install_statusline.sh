@@ -8,6 +8,14 @@
 
 set -euo pipefail
 
+# Formatting for the closing hint -- see install_aliases.sh for the rationale.
+# Guarded on stdout being a tty so piped output stays plain text.
+if [[ -t 1 ]]; then
+  BOLD=$'\033[1m'; BLUE=$'\033[34m'; RED=$'\033[31m'; RESET=$'\033[0m'
+else
+  BOLD=''; BLUE=''; RED=''; RESET=''
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SRC="${SCRIPT_DIR}/../resources/extras/statusline-command.sh"
 DEST="$HOME/.claude/statusline-command.sh"
@@ -71,6 +79,9 @@ else
   echo "    OK: statusLine points here, refreshInterval set"
 fi
 
+# Unlike the alias installers there is no command to copy: the script is picked
+# up on the next render by itself. Only a settings.json change needs action, so
+# the call-to-action highlights the restart rather than a paste-able line.
 echo ""
-echo "==> Done. An updated script takes effect on the next render; a settings.json"
-echo "    change needs a Claude Code restart."
+echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} An updated script takes effect on the next render."
+echo "    ${BOLD}${RED}A settings.json change needs a Claude Code restart.${RESET}"

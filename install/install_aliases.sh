@@ -15,9 +15,9 @@ set -euo pipefail
 # Guarded on stdout being a tty, the way Homebrew's formatter.sh does it:
 # piping or redirecting this script should yield plain text, not escape codes.
 if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RESET=$'\033[0m'
+  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
 else
-  BOLD=''; BLUE=''; CYAN=''; RESET=''
+  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -106,7 +106,7 @@ fi
 # reads as "the install did nothing". Call that out explicitly.
 echo ""
 echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Aliases are installed, but ${BOLD}this shell${RESET} still has the old copy."
-echo "    Run this to load them now:"
+echo "    ${BOLD}${RED}Run this to load them now:${RESET}"
 echo ""
 echo "      ${BOLD}${CYAN}source $DEST${RESET}"
 echo ""

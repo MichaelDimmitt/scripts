@@ -96,6 +96,17 @@ your shell's interactive RC — `.zshrc` under zsh, `.bashrc` under bash. Re-run
 after editing the aliases; it is idempotent, and it collapses the duplicate
 `source` lines older versions of the generate script left behind.
 
+The installer runs as a child process, so it cannot change the alias table of
+the shell you launched it from. Until you re-source, `alias cchats` still reports
+the *old* definition and the install looks like it did nothing. Load it with:
+
+```sh
+source ~/.brew-cask-aliases-additional
+```
+
+Or just open a new terminal. Every installer here prints this reminder when it
+finishes.
+
 Either path works, but pick one — a home-dir copy stops tracking the repo the
 moment this file changes.
 
