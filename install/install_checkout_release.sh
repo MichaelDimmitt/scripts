@@ -3,6 +3,14 @@
 
 set -euo pipefail
 
+# Formatting for the closing hint -- see install_aliases.sh for the rationale.
+# Guarded on stdout being a tty so piped output stays plain text.
+if [[ -t 1 ]]; then
+  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
+else
+  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
+fi
+
 echo "==> Creating ~/.local/bin"
 mkdir -p ~/.local/bin
 
@@ -65,5 +73,13 @@ else
   printf '\n%s\n' "$GIT_FUNC" >> ~/.bashrc
 fi
 
+# Same child-process caveat as install_aliases.sh: the PATH entry and git()
+# function land in ~/.bashrc, but this shell already read its RC, so nothing
+# changes here until the user re-sources it.
 echo ""
-echo "==> Done. Run 'source ~/.bashrc' to apply changes."
+echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Installed, but ${BOLD}this shell${RESET} has not picked it up yet."
+echo "    ${BOLD}${RED}Run this to load it now:${RESET}"
+echo ""
+echo "      ${BOLD}${CYAN}source ~/.bashrc${RESET}"
+echo ""
+echo "    (Or just open a new terminal.)"

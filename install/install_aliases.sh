@@ -8,6 +8,18 @@
 
 set -euo pipefail
 
+# Formatting for the closing hint. The copy-paste line is the one piece of
+# output the user must act on, so it gets bold + colour rather than blending
+# into the log above it.
+#
+# Guarded on stdout being a tty, the way Homebrew's formatter.sh does it:
+# piping or redirecting this script should yield plain text, not escape codes.
+if [[ -t 1 ]]; then
+  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
+else
+  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SRC="${SCRIPT_DIR}/../resources/extras/brew-cask-aliases-additional"
 DEST="$HOME/.brew-cask-aliases-additional"
@@ -88,6 +100,14 @@ if [[ "$shell" == "bash" && -f "$HOME/.bash_profile" ]]; then
   fi
 fi
 
+# The aliases are installed, but this script is a child process -- it cannot
+# touch the parent shell's alias table. Until the user sources the file (or
+# opens a new shell) `alias cchats` still reports the old definition, which
+# reads as "the install did nothing". Call that out explicitly.
 echo ""
-echo "==> Done. To use them in THIS shell:"
-echo "      source $DEST"
+echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Aliases are installed, but ${BOLD}this shell${RESET} still has the old copy."
+echo "    ${BOLD}${RED}Run this to load them now:${RESET}"
+echo ""
+echo "      ${BOLD}${CYAN}source $DEST${RESET}"
+echo ""
+echo "    (Or just open a new terminal.)"
