@@ -8,8 +8,10 @@ alias cx="codex --yolo"
 # Use when you have safe tasks ahead (e.g. editing commits) and don't want constant permission prompts.
 alias cresume="claude -c --dangerously-skip-permissions"
 
-# List previous Claude Code sessions in the current project (newest first)
-alias cchats='ls -lt ~/.claude/projects/"$(pwd | sed "s:/:-:g")"/'
+# List previous Claude Code sessions in the current project (newest first).
+# Claude Code names the project dir by replacing every non-alphanumeric character
+# in the path with "-", so new_c/transcripts lands in ...-new-c-transcripts.
+alias cchats='ls -lt ~/.claude/projects/"$(pwd | sed "s:[^a-zA-Z0-9]:-:g")"/'
 
 # Resume a specific Claude Code session by ID (or .jsonl filename) with permissions bypass.
 # Usage: cresumef <session-id>   — IDs come from `cchats`.
