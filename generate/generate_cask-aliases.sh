@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Run this once (or whenever you install/remove a cask)
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Formatting for the closing hint -- see install_aliases.sh for the rationale.
-# Guarded on stdout being a tty so piped output stays plain text.
-if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
-else
-  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
-fi
+# The shared library guards on stdout being a tty so piped output stays plain.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
 # Skip any cask whose name already resolves to an executable on PATH —
 # those casks ship their own CLI (e.g. `cursor`, `code`) that accepts paths
@@ -32,7 +31,7 @@ echo 'source ~/.brew-cask-aliases' >> ~/.bashrc
 # copied here. That one detects the shell's RC file instead of assuming
 # ~/.bashrc, and de-duplicates its source line -- this script used to append it
 # unguarded, so every run left another copy behind.
-bash "$(dirname "$0")/../install/install_aliases.sh"
+bash "${SCRIPT_DIR}/../install/install_aliases.sh"
 
 # install_aliases.sh above printed its own hint covering the -additional file
 # only. This run also regenerated ~/.brew-cask-aliases, so both need sourcing;

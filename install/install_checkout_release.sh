@@ -3,13 +3,12 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Formatting for the closing hint -- see install_aliases.sh for the rationale.
-# Guarded on stdout being a tty so piped output stays plain text.
-if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; BLUE=$'\033[34m'; CYAN=$'\033[36m'; RED=$'\033[31m'; RESET=$'\033[0m'
-else
-  BOLD=''; BLUE=''; CYAN=''; RED=''; RESET=''
-fi
+# The shared library guards on stdout being a tty so piped output stays plain.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
 echo "==> Creating ~/.local/bin"
 mkdir -p ~/.local/bin
@@ -22,7 +21,6 @@ else
   echo "==> SKIP: ~/.bashrc already contains .local/bin PATH entry"
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SRC="${SCRIPT_DIR}/../bin/latest_release"
 DEST="$HOME/.local/bin/latest_release"
 

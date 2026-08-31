@@ -8,15 +8,13 @@
 
 set -euo pipefail
 
-# Formatting for the closing hint -- see install_aliases.sh for the rationale.
-# Guarded on stdout being a tty so piped output stays plain text.
-if [[ -t 1 ]]; then
-  BOLD=$'\033[1m'; BLUE=$'\033[34m'; RED=$'\033[31m'; RESET=$'\033[0m'
-else
-  BOLD=''; BLUE=''; RED=''; RESET=''
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Formatting for the closing hint -- see install_aliases.sh for the rationale.
+# The shared library guards on stdout being a tty so piped output stays plain.
+# shellcheck source=resources/lib/colours.sh
+source "${SCRIPT_DIR}/../resources/lib/colours.sh"
+
 SRC="${SCRIPT_DIR}/../resources/extras/statusline-command.sh"
 DEST="$HOME/.claude/statusline-command.sh"
 SETTINGS="$HOME/.claude/settings.json"
