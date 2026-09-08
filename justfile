@@ -44,3 +44,7 @@ install-statusline:
 # Install cl/cx/cresume/cresumef aliases and source them from your shell RC
 install-aliases:
     bash install/install_aliases.sh
+
+# Run every install-* script in one pass
+install-all:
+    bash install/install_all.sh

@@ -52,6 +52,7 @@ just generate-cask-aliases
 just install-checkout-release
 just install-statusline
 just install-aliases
+just install-all            # every install-* script in one pass
 ```
 
 ---

@@ -74,6 +74,24 @@ declaring its own.
 - Every variable is blanked when stdout is not a tty, so redirected output
   (`just tell-skills > notes.txt`) stays plain text.
 
+### Shell RC selection
+
+`resources/lib/shell_rc.sh` is the single answer to "which file do I write an
+alias or shell function into". Any installer that edits shell config sources it
+instead of naming a file directly.
+
+- `SHELL_NAME` is the basename of `$SHELL`; `SHELL_RC` is that shell's
+  interactive RC (`~/.zshrc`, `~/.bashrc`).
+- `SHELL_RC` is empty for shells this repo has no snippet syntax for (fish,
+  csh). Treat that as "print the manual steps and skip the RC edit" — never
+  fall back to a default file.
+- `shell_rc_warn_login_profile "<what>"` reports the bash case where
+  `~/.bash_profile` does not source `~/.bashrc`, so a login shell never sees
+  what was just installed. A no-op under other shells.
+
+Hardcoding `~/.bashrc` is the specific bug this replaces: under zsh, the macOS
+default, it edits a file the user's shell never reads and still reports success.
+
 ## Comment Style
 
 Order comments mechanic-first, use-case second:
