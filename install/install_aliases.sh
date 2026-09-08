@@ -17,6 +17,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=resources/lib/colours.sh
 source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
+# SHELL_NAME / SHELL_RC: which config file these aliases have to land in to
+# take effect. Shared with the other installers so they all agree on it.
+# shellcheck source=resources/lib/shell_rc.sh
+source "${SCRIPT_DIR}/../resources/lib/shell_rc.sh"
+
 SRC="${SCRIPT_DIR}/../resources/extras/brew-cask-aliases-additional"
 DEST="$HOME/.brew-cask-aliases-additional"
 
@@ -41,30 +46,18 @@ else
   fi
 fi
 
-# Which RC file to source from. The old generate script hardcoded ~/.bashrc,
-# which silently does nothing under zsh -- the macOS default since Catalina.
-#
-# Interactive RC, not the login profile: aliases are an interactive-shell
-# feature, and under bash that means .bashrc specifically. Bash only reads
-# .bashrc for interactive non-login shells, so a login shell (Terminal.app
-# opens one) picks these up only if .bash_profile sources .bashrc -- checked
-# and reported below rather than silently assumed.
-shell=$(basename "${SHELL:-bash}")
-case "$shell" in
-  zsh)  RC="$HOME/.zshrc" ;;
-  bash) RC="$HOME/.bashrc" ;;
-  *)
-    # Every other shell either uses a syntax these aliases are not written in
-    # (fish, csh) or has no obvious interactive RC. Say so instead of writing
-    # a source line into a file that will never run it.
-    echo "==> WARN: unsupported shell '$shell' -- not editing any RC file"
-    echo "    Source it yourself from your shell's interactive config:"
-    echo "      source $DEST"
-    exit 0
-    ;;
-esac
+# See resources/lib/shell_rc.sh for why this is the interactive RC and not the
+# login profile. An empty SHELL_RC means the shell is one this repo's snippets
+# are not written for; leave its config alone and hand the line to the user.
+if [[ -z "$SHELL_RC" ]]; then
+  echo "==> WARN: unsupported shell '$SHELL_NAME' -- not editing any RC file"
+  echo "    Source it yourself from your shell's interactive config:"
+  echo "      source $DEST"
+  exit 0
+fi
 
-echo "==> Wiring up $RC"
+RC="$SHELL_RC"
+echo "==> Wiring up $RC (shell: $SHELL_NAME)"
 # Written with a literal ~ rather than the expanded path, to match the line the
 # generate script writes beside it and to stay valid if $HOME ever moves.
 LINE="source ~/.brew-cask-aliases-additional"
@@ -88,13 +81,7 @@ fi
 
 # Under bash a login shell reads .bash_profile, not .bashrc, so aliases written
 # to .bashrc reach a Terminal.app window only via that chain.
-if [[ "$shell" == "bash" && -f "$HOME/.bash_profile" ]]; then
-  if ! grep -qE '(\.|source).*\.bashrc' "$HOME/.bash_profile"; then
-    echo "    WARN: ~/.bash_profile does not source ~/.bashrc"
-    echo "          Login shells will not see these aliases. Add to ~/.bash_profile:"
-    echo "            . \"\$HOME/.bashrc\""
-  fi
-fi
+shell_rc_warn_login_profile "these aliases"
 
 # The aliases are installed, but this script is a child process -- it cannot
 # touch the parent shell's alias table. Until the user sources the file (or

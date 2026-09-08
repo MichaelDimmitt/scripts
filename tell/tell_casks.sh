@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+# Lists installed Homebrew casks, split by whether they ship a CLI binary
+# Useful for deciding which casks need an `open -a` alias generated for them
+
 echo "=== Casks WITH binaries ==="
 echo ""
 for cask in $(brew list --cask); do
