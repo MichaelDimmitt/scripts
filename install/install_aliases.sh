@@ -22,6 +22,12 @@ source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 # shellcheck source=resources/lib/shell_rc.sh
 source "${SCRIPT_DIR}/../resources/lib/shell_rc.sh"
 
+# next_step/next_steps_render: the closing call to action. Recorded rather than
+# printed directly, so `just install-all` can gather every installer's actions
+# into one block instead of leaving them scattered up the scrollback.
+# shellcheck source=resources/lib/next_steps.sh
+source "${SCRIPT_DIR}/../resources/lib/next_steps.sh"
+
 SRC="${SCRIPT_DIR}/../resources/extras/brew-cask-aliases-additional"
 DEST="$HOME/.brew-cask-aliases-additional"
 
@@ -44,6 +50,9 @@ else
   else
     echo "    WARN: files differ after copy!"
   fi
+  # Only a changed file needs sourcing. On the SKIP path this shell's aliases
+  # already match what is on disk, so there is nothing for the user to do.
+  next_step "source $DEST"
 fi
 
 # See resources/lib/shell_rc.sh for why this is the interactive RC and not the
@@ -51,8 +60,12 @@ fi
 # are not written for; leave its config alone and hand the line to the user.
 if [[ -z "$SHELL_RC" ]]; then
   echo "==> WARN: unsupported shell '$SHELL_NAME' -- not editing any RC file"
-  echo "    Source it yourself from your shell's interactive config:"
-  echo "      source $DEST"
+  echo "    Nothing will load these automatically; source them yourself."
+  # Self-contained wording: the copy above may already have recorded the source
+  # line, and the renderer keeps first-seen order, so a note that reads as a
+  # caption ("source this:") would end up orphaned below its own command.
+  next_step_note "Nothing sources $DEST under $SHELL_NAME -- add it to your shell's config."
+  next_steps_render
   exit 0
 fi
 
@@ -77,6 +90,7 @@ if [[ -f "$RC" ]] && grep -qF "$LINE" "$RC"; then
 else
   printf '%s\n' "$LINE" >> "$RC"
   echo "    Added: $LINE"
+  next_step "source $RC"
 fi
 
 # Under bash a login shell reads .bash_profile, not .bashrc, so aliases written
@@ -86,11 +100,13 @@ shell_rc_warn_login_profile "these aliases"
 # The aliases are installed, but this script is a child process -- it cannot
 # touch the parent shell's alias table. Until the user sources the file (or
 # opens a new shell) `alias cchats` still reports the old definition, which
-# reads as "the install did nothing". Call that out explicitly.
+# reads as "the install did nothing". Say so, then hand the actual command to
+# the aggregator so it lands in one place with every other installer's.
 echo ""
-echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Aliases are installed, but ${BOLD}this shell${RESET} still has the old copy."
-echo "    ${BOLD}${RED}Run this to load them now:${RESET}"
-echo ""
-echo "      ${BOLD}${CYAN}source $DEST${RESET}"
-echo ""
-echo "    (Or just open a new terminal.)"
+if next_steps_pending; then
+  echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Aliases are installed, but ${BOLD}this shell${RESET} still has the old copy."
+  next_step_aside "(Or just open a new terminal.)"
+else
+  echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Aliases were already current -- nothing to do."
+fi
+next_steps_render

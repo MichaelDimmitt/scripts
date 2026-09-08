@@ -15,6 +15,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=resources/lib/colours.sh
 source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
+# next_step/next_steps_render: the closing call to action, recorded rather than
+# printed so `just install-all` can gather every installer's into one block.
+# shellcheck source=resources/lib/next_steps.sh
+source "${SCRIPT_DIR}/../resources/lib/next_steps.sh"
+
 SRC="${SCRIPT_DIR}/../resources/extras/statusline-command.sh"
 DEST="$HOME/.claude/statusline-command.sh"
 SETTINGS="$HOME/.claude/settings.json"
@@ -60,26 +65,32 @@ echo "==> Checking $SETTINGS"
 if [[ ! -f "$SETTINGS" ]]; then
   echo "    WARN: no settings.json -- the status line will not render until you add:"
   echo "          \"statusLine\": { \"type\": \"command\", \"command\": \"bash $DEST\", \"refreshInterval\": 30 }"
+  next_step_note "Add a statusLine block to $SETTINGS pointing at $DEST, then restart Claude Code."
 elif ! grep -q 'statusLine' "$SETTINGS"; then
   echo "    WARN: no statusLine block -- add:"
   echo "          \"statusLine\": { \"type\": \"command\", \"command\": \"bash $DEST\", \"refreshInterval\": 30 }"
+  next_step_note "Add a statusLine block to $SETTINGS pointing at $DEST, then restart Claude Code."
 elif ! grep -q "$DEST" "$SETTINGS"; then
   # A statusLine pointing somewhere else means this install had no effect on
   # what actually renders, which is worth saying loudly.
   echo "    WARN: statusLine does not point at $DEST"
   echo "          Claude Code is running some other script; this install changed nothing."
+  next_step_note "Point statusLine at $DEST in $SETTINGS, then restart Claude Code."
 elif ! grep -q 'refreshInterval' "$SETTINGS"; then
   # Without idle renders the per-command cost segment cannot find turn
   # boundaries and the rate-limit numbers freeze mid-command.
   echo "    WARN: no refreshInterval -- usage numbers will freeze during long calls"
   echo "          Add \"refreshInterval\": 30 to the statusLine block."
+  next_step_note "Add \"refreshInterval\": 30 to the statusLine block in $SETTINGS."
 else
   echo "    OK: statusLine points here, refreshInterval set"
 fi
 
 # Unlike the alias installers there is no command to copy: the script is picked
-# up on the next render by itself. Only a settings.json change needs action, so
-# the call-to-action highlights the restart rather than a paste-able line.
+# up on the next render by itself. The restart line used to print on every run,
+# including the one where settings.json was already correct and there was
+# nothing to restart for. It is now recorded by the branches above that
+# actually found something to fix, so the OK path closes silently.
 echo ""
 echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} An updated script takes effect on the next render."
-echo "    ${BOLD}${RED}A settings.json change needs a Claude Code restart.${RESET}"
+next_steps_render

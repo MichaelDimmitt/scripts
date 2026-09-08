@@ -19,9 +19,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=resources/lib/colours.sh
 source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 
-# SHELL_RC, for the closing hint -- the same file the installers below write to.
-# shellcheck source=resources/lib/shell_rc.sh
-source "${SCRIPT_DIR}/../resources/lib/shell_rc.sh"
+# The aggregator. Exporting NEXT_STEPS_FILE before running the installers is
+# what puts them in "record, do not print" mode: each appends the actions it
+# could not perform for the user, and this script renders the combined,
+# deduplicated block once at the end. See resources/lib/next_steps.sh.
+#
+# shell_rc.sh is no longer sourced here -- the closing hint used to be built
+# from SHELL_RC, which meant guessing at what the installers had done. They
+# report it now instead.
+# shellcheck source=resources/lib/next_steps.sh
+source "${SCRIPT_DIR}/../resources/lib/next_steps.sh"
+export NEXT_STEPS_FILE
 
 failed=()
 ran=0
@@ -45,29 +53,28 @@ for script in "${SCRIPT_DIR}"/install_*.sh; do
   fi
 done
 
-# Each installer prints its own "run this to load it" hint, and by the end
-# those have scrolled well up the screen. Repeat the one action that covers all
-# of them so the last thing on screen is still the thing to do.
-#
-# Which RC to name comes from resources/lib/shell_rc.sh, the same decision the
-# installers themselves make, so this hint always points at the file they wrote.
-
 echo ""
 echo "${BLUE}==>${RESET} ${BOLD}Ran ${ran} installer(s).${RESET}"
 
 if [[ ${#failed[@]} -gt 0 ]]; then
   echo "    ${BOLD}${RED}${#failed[@]} failed:${RESET} ${failed[*]}"
   echo "    Re-run the failing one on its own to see its output in isolation."
+  # Steps recorded before a failure still render below: an RC file that was
+  # already edited still needs sourcing, whatever happened afterwards.
+fi
+
+# One block for the whole run, rather than each installer's hint scattered up
+# the scrollback. This says what the run actually did -- a re-run that changed
+# nothing records nothing and prints nothing, which the old hardcoded
+# "source your RC / restart Claude Code" footer could not express.
+if next_steps_pending; then
+  next_step_aside "(Or just open a new terminal.)"
+else
+  echo "    Nothing to do -- everything was already up to date."
+fi
+
+next_steps_render
+
+if [[ ${#failed[@]} -gt 0 ]]; then
   exit 1
 fi
-
-echo "    All steps reported success, but ${BOLD}this shell${RESET} has not picked them up yet."
-
-if [[ -n "$SHELL_RC" ]]; then
-  echo "    ${BOLD}${RED}Run this to load them now:${RESET}"
-  echo ""
-  echo "      ${BOLD}${CYAN}source ${SHELL_RC}${RESET}"
-  echo ""
-fi
-
-echo "    (Or just open a new terminal. A settings.json change needs a Claude Code restart.)"
