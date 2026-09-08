@@ -338,11 +338,11 @@ bash tell/tell_installed_skills.sh
 ---
 
 ### `install/install_checkout_release.sh`
-Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in `~/.bashrc`, registers the `git checkout-release` alias, and installs the `git checkout release` / `git checkout release/` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
+Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in your shell's interactive RC — `.zshrc` under zsh, `.bashrc` under bash — registers the `git checkout-release` alias, and installs the `git checkout release` / `git checkout release/` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
 
 ```sh
 bash install/install_checkout_release.sh
-source ~/.bashrc
+source ~/.zshrc      # or ~/.bashrc under bash — the installer tells you which
 ```
 
 ---
@@ -374,7 +374,7 @@ git checkout release          # shell function intercept (also matches release/;
 ```sh
 # clone the repo, then:
 bash install/install_checkout_release.sh
-source ~/.bashrc
+source ~/.zshrc      # or ~/.bashrc under bash — the installer tells you which
 ```
 
 ---
