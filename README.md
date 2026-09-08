@@ -11,6 +11,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 - `tell/` — scripts that display or report information
 - `generate/` — scripts that produce or create output
 - `install/` — scripts that set up tooling or wire up shell integrations
+- `check/` — scripts that verify the repo's own conventions
 - `bin/` — standalone executables (no verb prefix)
 
 ### Examples
@@ -27,11 +28,12 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
+| `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
 
-- Use a verb prefix that describes what the script does (`tell`, `generate`, `install`)
+- Use a verb prefix that describes what the script does (`tell`, `generate`, `install`, `check`)
 - Separate words with underscores (snake_case)
 - Use the `.sh` extension for all shell scripts
 - Place the script in the folder matching its verb
@@ -53,7 +55,8 @@ just install-checkout-release
 just install-statusline
 just install-aliases
 just install-all            # every install-* script in one pass
-just lint                   # shellcheck every script in the repo
+just check-conventions      # installer contract, shebangs, exec bits
+just lint                   # check-conventions, then shellcheck every script
 ```
 
 ---
@@ -65,6 +68,21 @@ just lint                   # shellcheck every script in the repo
 | [ARCHITECTURE.md](./resources/docs/ARCHITECTURE.md) | Folder structure, naming conventions, how to add scripts and resources |
 | [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
 | [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
+
+## Templates
+
+Skeletons to copy when adding a script, rather than starting from a blank file.
+
+| File | Purpose |
+|------|---------|
+| [install_template.sh](./resources/templates/install_template.sh) | Starting point for a new `install/*.sh` — sources the three shared libraries, shows the `SKIP: already current` branch beside the one that records a next step, and closes with `next_steps_render` |
+
+```sh
+cp resources/templates/install_template.sh install/install_foo.sh
+chmod +x install/install_foo.sh
+```
+
+The template encodes [the installer contract](./resources/docs/ARCHITECTURE.md#the-installer-contract), which `just lint` enforces — so a copy starts out passing.
 
 ## Extras
 
@@ -353,6 +371,23 @@ git checkout release          # shell function intercept (also matches release/;
 # clone the repo, then:
 bash install/install_checkout_release.sh
 source ~/.bashrc
+```
+
+---
+
+### `check/check_conventions.sh`
+Verifies the conventions a reviewer would otherwise have to catch by eye, reporting every violation in one pass and exiting non-zero if there are any. Run by `just lint` before shellcheck.
+
+**Checks:**
+- Every `install/*.sh` (except the `install_all.sh` aggregator) sources `resources/lib/next_steps.sh` and calls `next_steps_render`
+- No installer prints its own `source ~/...` call to action — that is what `next_step` is for
+- Every tracked file has a shebang if and only if it is executable (`resources/templates/` excepted: a template carries the shebang its copy will need without being runnable itself)
+- `resources/lib/*.sh` are non-executable, shebang-free, and carry `# shellcheck shell=bash`
+
+See [The installer contract](./resources/docs/ARCHITECTURE.md#the-installer-contract) for the rules and why they are enforced rather than documented.
+
+```sh
+just check-conventions
 ```
 
 ---

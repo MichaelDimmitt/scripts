@@ -14,6 +14,8 @@ scripts/
 │   └── generate_*.sh
 ├── install/               # Scripts that set up tooling or wire up shell integrations
 │   └── install_*.sh
+├── check/                 # Scripts that verify the repo's own conventions
+│   └── check_*.sh
 ├── bin/                   # Standalone executables (no verb prefix)
 │   └── latest_release
 ├── resources/
@@ -22,7 +24,8 @@ scripts/
 │   │                      #   plus Claude Code integrations (statusline, hooks)
 │   ├── lib/               # Shell libraries the repo's own scripts source
 │   ├── mappings/          # Key→value lookup tables (pipe-delimited)
-│   ├── templates/         # (future) reusable output templates
+│   ├── templates/         # Skeletons to copy when adding a script
+│   │   └── install_template.sh
 │   ├── lists/             # (future) static enumeration files
 │   └── schemas/           # (future) validation or format definitions
 └── README.md
@@ -33,7 +36,7 @@ scripts/
 ### Scripts
 - Pattern: `verb_noun.sh`
 - Case: snake_case
-- Verbs: `tell` (display/report), `generate` (produce/create), `install` (set up tooling/shell integrations)
+- Verbs: `tell` (display/report), `generate` (produce/create), `install` (set up tooling/shell integrations), `check` (verify the repo's own conventions)
 
 ### Resource files
 - Mapping files: descriptive noun, `.txt`, pipe-delimited (`NAME | VALUE`)
@@ -137,10 +140,68 @@ Leading with the functional description lets a skimmer get the "what" immediatel
 
 1. Pick a verb that describes what it does (`tell`, `generate`, `install`, etc.)
 2. Name it `verb_noun.sh` in snake_case
-3. Place it in the folder matching its verb (e.g. `tell/tell_foo.sh`)
+3. Place it in the folder matching its verb (e.g. `tell/tell_foo.sh`).
+   For an installer, start from the skeleton rather than a blank file:
+   `cp resources/templates/install_template.sh install/install_foo.sh`
 4. Reference resource files via `${SCRIPT_DIR}/../resources/...`
-5. If it needs a lookup table, add it to `resources/mappings/`
-6. Add a section for it in README.md under Scripts
+5. Source a shared library for anything one of them already owns. See
+   **Shared Libraries** above for what each sets and the `SCRIPT_DIR` form to
+   source it with.
+
+   | If the script | Source | Rather than |
+   |---|---|---|
+   | colours its output | `resources/lib/colours.sh` | declaring `BOLD`/`RESET` itself |
+   | writes to the user's shell config | `resources/lib/shell_rc.sh` | naming `~/.bashrc` directly |
+   | ends with a call to action | `resources/lib/next_steps.sh` | `echo`ing the hint itself |
+
+6. If it needs a lookup table, add it to `resources/mappings/`
+7. Add a section for it in README.md under Scripts
+8. Run `just lint` -- it runs `check/check_conventions.sh` over the rules below
+   before shellcheck, so a script that opts out of a shared library fails here
+   rather than at review
+
+### The installer contract
+
+Everything under `install/` is also bound by the following. It is a contract
+rather than a suggestion because opting out is silent: an installer that prints
+its own hint still works, it just quietly returns the repo to the scattered
+call-to-actions that `next_steps.sh` exists to collect.
+
+Every `install/*.sh` must:
+
+1. source `resources/lib/next_steps.sh`
+2. record what the user still has to do with `next_step` / `next_step_note`
+   **inside the branch that made the change**, never unconditionally at the end
+3. end with `next_steps_render`
+4. never `echo` a "source this" call to action of its own -- that is the line
+   step 2 replaces
+
+`install/install_statusline.sh` is the worked example of step 2: four of its
+five `settings.json` branches record a step and the `OK` branch records none,
+so an install that found nothing to fix closes silently. Recording at the end
+instead would ask for a Claude Code restart on every run, including the run
+where nothing changed to restart for.
+
+Where "did anything change" spans several branches rather than one, compare the
+file before and after -- `install_checkout_release.sh` checksums the RC -- and
+record once against that.
+
+`install_all.sh` is exempt from all four: it is the aggregator that renders the
+combined block, not an installer.
+
+`resources/templates/install_template.sh` is the contract as runnable code: it
+sources all three libraries, records a step in the branch that copied the file
+and none in the `SKIP: already current` branch beside it, and closes with
+`next_steps_render`. Copying it is the shortest path to a compliant installer.
+It keeps a shebang -- the copy needs one -- but stays non-executable, which is
+why the shebang/exec-bit rule below skips `resources/templates/`.
+
+`check/check_conventions.sh` enforces every rule above, plus two the whole repo
+is held to: a file has a shebang if and only if it is executable, and
+`resources/lib/*.sh` are non-executable, shebang-free, and carry
+`# shellcheck shell=bash`. It reports every violation in one pass and exits
+non-zero, so `just lint` fails on a contract breach the way it fails on a
+shellcheck finding.
 
 ## Adding a New Resource
 
@@ -149,4 +210,5 @@ Leading with the functional description lets a skimmer get the "what" immediatel
 | Key→value lookup | `resources/mappings/` | `NAME \| VALUE` (pipe-delimited) |
 | Sourced shell library | `resources/lib/` | `*.sh`, no shebang, `# shellcheck shell=bash` |
 | Reusable text blocks | `resources/templates/` | Plain text or heredoc-ready |
+| Script skeleton | `resources/templates/` | `*.sh`, shebang, non-executable |
 | Static lists | `resources/lists/` | One item per line |
