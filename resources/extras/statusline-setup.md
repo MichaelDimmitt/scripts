@@ -73,16 +73,30 @@ simply re-baselines on its next render.
 
 ## Settings
 
-However you install it, the `statusLine` block in `~/.claude/settings.json`
-ends up looking like this:
+The `statusLine` block in `~/.claude/settings.json` ends up looking like this —
+**with the path matching how you installed it**, which is the one detail worth
+getting right:
 
 ```json
 "statusLine": {
   "type": "command",
-  "command": "bash ~/statusline-command.sh",
+  "command": "bash ~/.claude/statusline-command.sh",
   "refreshInterval": 30
 }
 ```
+
+| Install | Path to point at |
+|---------|------------------|
+| `just install-statusline`, from a clone | `~/.claude/statusline-command.sh` |
+| `curl` standalone, no clone | `~/statusline-command.sh` |
+
+Mixing the two is how a bar goes stale in a way nothing reports: `curl` first,
+clone the repo later, and `just install-statusline` then maintains a copy at
+`~/.claude/statusline-command.sh` that `settings.json` never points at. The
+installer detects exactly that case now — a `statusLine` running an older copy
+of this same script — and repoints it, keeping a `settings.json.bak` and telling
+you which file went unused. It leaves a `statusLine` running anything else
+alone.
 
 ### Why `refreshInterval`
 
