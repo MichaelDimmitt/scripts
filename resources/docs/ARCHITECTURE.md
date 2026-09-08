@@ -203,6 +203,16 @@ is held to: a file has a shebang if and only if it is executable, and
 non-zero, so `just lint` fails on a contract breach the way it fails on a
 shellcheck finding.
 
+`check/check_install.sh` is the end-to-end counterpart, and deliberately not
+part of `just lint`: it runs the installers for real against a throwaway
+`$HOME`, then asks a fresh `zsh -ic` / `bash -ic` whether the aliases and
+functions actually came out the other side. Liveness cannot be asserted any
+other way -- an installer is a child process and can never change the alias
+table of the shell that launched it -- and aliases do not expand in a
+non-interactive shell, so the `-i` is load-bearing. It is what catches a
+hardcoded RC path: the install reports success while every alias comes back
+dead under the shell it did not write to.
+
 ## Adding a New Resource
 
 | Type | Folder | Format |
