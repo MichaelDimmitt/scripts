@@ -14,19 +14,23 @@ proposes a log, a changeset doc, and an uninstaller. You are building one piece.
 
 ## 0. Find the plan first
 
-`plan3.md` and this file were written on the branch `statusline-migrate` and may
-not have reached `master` yet.
+`plan3.md` is on `master` as of `fefa2ce` (PR #20). Confirm it before anything
+else — if you are on a branch that predates it, you are reading a stale executor.
 
 ```sh
 cd /Users/michaeldimmitt/scripts
-git branch --contains HEAD
 ls plan3.md || git log --all --oneline -- plan3.md
 ```
 
-If `plan3.md` is not on your current branch, find the branch that has it and
-start from there. Do not re-derive the plan from this file — this file is the
-executor, `plan3.md` is the design, and it holds detail this one deliberately
-omits.
+Do not re-derive the plan from this file — this file is the executor, `plan3.md`
+is the design, and it holds detail this one deliberately omits.
+
+**Branch off `master`, and expect your work to be squash-merged.** That matters
+here because both documents cite commits by sha: a squash replaces the sha you
+committed under, so any sha you write into the plan is correct only until it
+lands. `plan2.md` carries a scar from exactly this. When you record a step's
+commit in the status table, record the **squashed** sha from `master` after the
+PR merges, not the one from your branch.
 
 ---
 
@@ -58,7 +62,7 @@ ls CHANGESET.md 2>/dev/null
 ls tell/tell_install_log.sh 2>/dev/null
 
 # Step 5 (D+E+F, uninstall) — all three, one commit.
-# Do NOT probe for "byte-identical": the tilde assertion added in 4662925
+# Do NOT probe for "byte-identical": the tilde assertion added in fefa2ce
 # already uses that phrase, so it would read as step 5 being done.
 ls uninstall/uninstall_all.sh resources/graveyard.tsv 2>/dev/null
 grep -c 'uninstall' check/check_install.sh
@@ -162,7 +166,7 @@ just check-install   # end-to-end, throwaway $HOME
    without adding a `check_install.sh` case is not done.
 3. **Mutation-test anything you assert.** Reintroduce the bug your new check
    describes and confirm the check fails. This is not optional ceremony: in
-   `4662925` the first draft of a new assertion passed with its own bug restored,
+   `fefa2ce` the first draft of a new assertion passed with its own bug restored,
    and only mutation testing caught it. A test that cannot fail is not a test.
 4. **Never run an installer against your real `$HOME` to test it.** Use a
    throwaway: `HOME=$(mktemp -d) bash install/install_foo.sh`. `check_install.sh`
