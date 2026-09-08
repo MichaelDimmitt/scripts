@@ -320,14 +320,29 @@ Dependency-forced for the most part; where there was a choice, the cheap and
 read-only work goes first, and the one irreversible piece goes last behind a test
 that can prove it.
 
-| # | Step | Depends on | Effort | Why here |
-|---|------|-----------|--------|----------|
-| 1 | **A** — install log library, wired into 4 installers | — | ~90 min | Substrate. Nothing else works without it |
-| 2 | **B** — enforce it in `check_conventions.sh` | A | ~20 min | A voluntary log rots on the first installer that forgets |
-| 3 | **G** — `CHANGESET.md` | — | ~20 min | Independent; land it while the statusline migration is fresh |
-| 4 | **C** — `just tell-install-log` | A, B | ~45 min | Read-only use of the log, so its gaps surface harmlessly |
-| 5 | **D + E + F** — uninstall, graveyard, round-trip test | A, B, C | ~3 hrs | One commit. Uninstall without F is the dangerous version |
-| — | **H** — migration runner | — | — | Deferred until a third migration exists |
+**Status.** Kept current as each step lands, but treat it as a summary, not the
+source of truth — `prompt3.md` derives the next step by probing the repo, and the
+repo wins if these ever disagree.
+
+| # | Step | Depends on | Effort | State | Commit |
+|---|------|-----------|--------|-------|--------|
+| 1 | **A** — install log library, wired into 4 installers | — | ~90 min | next — **blocked on open decision 1** | — |
+| 2 | **B** — enforce it in `check_conventions.sh` | A | ~20 min | not started | — |
+| 3 | **G** — `CHANGESET.md` | — | ~20 min | not started — **unblocked, can go first** | — |
+| 4 | **C** — `just tell-install-log` | A, B | ~45 min | not started | — |
+| 5 | **D + E + F** — uninstall, graveyard, round-trip test | A, B, C | ~3 hrs | not started | — |
+| — | **H** — migration runner | — | — | deferred | — |
+
+Why each step sits where it does:
+
+- **A** is the substrate; nothing else works without it.
+- **B** follows immediately because a voluntary log rots on the first installer
+  that forgets to call it.
+- **G** is independent of all of it — land it while the statusline migration is
+  still fresh in someone's memory.
+- **C** uses the log read-only, so any gap in what A records surfaces harmlessly.
+- **D+E+F** is the only step that deletes anything, and goes last, behind a test
+  that can prove it.
 
 Steps 1–4 are additive and reversible. Step 5 is the only one that deletes
 anything, and it is sequenced last on purpose: by then the log has been proven
