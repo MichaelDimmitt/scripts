@@ -139,8 +139,47 @@ Leading with the functional description lets a skimmer get the "what" immediatel
 2. Name it `verb_noun.sh` in snake_case
 3. Place it in the folder matching its verb (e.g. `tell/tell_foo.sh`)
 4. Reference resource files via `${SCRIPT_DIR}/../resources/...`
-5. If it needs a lookup table, add it to `resources/mappings/`
-6. Add a section for it in README.md under Scripts
+5. Source a shared library for anything one of them already owns. See
+   **Shared Libraries** above for what each sets and the `SCRIPT_DIR` form to
+   source it with.
+
+   | If the script | Source | Rather than |
+   |---|---|---|
+   | colours its output | `resources/lib/colours.sh` | declaring `BOLD`/`RESET` itself |
+   | writes to the user's shell config | `resources/lib/shell_rc.sh` | naming `~/.bashrc` directly |
+   | ends with a call to action | `resources/lib/next_steps.sh` | `echo`ing the hint itself |
+
+6. If it needs a lookup table, add it to `resources/mappings/`
+7. Add a section for it in README.md under Scripts
+
+### The installer contract
+
+Everything under `install/` is also bound by the following. It is a contract
+rather than a suggestion because opting out is silent: an installer that prints
+its own hint still works, it just quietly returns the repo to the scattered
+call-to-actions that `next_steps.sh` exists to collect.
+
+Every `install/*.sh` must:
+
+1. source `resources/lib/next_steps.sh`
+2. record what the user still has to do with `next_step` / `next_step_note`
+   **inside the branch that made the change**, never unconditionally at the end
+3. end with `next_steps_render`
+4. never `echo` a "source this" call to action of its own -- that is the line
+   step 2 replaces
+
+`install/install_statusline.sh` is the worked example of step 2: four of its
+five `settings.json` branches record a step and the `OK` branch records none,
+so an install that found nothing to fix closes silently. Recording at the end
+instead would ask for a Claude Code restart on every run, including the run
+where nothing changed to restart for.
+
+Where "did anything change" spans several branches rather than one, compare the
+file before and after -- `install_checkout_release.sh` checksums the RC -- and
+record once against that.
+
+`install_all.sh` is exempt from all four: it is the aggregator that renders the
+combined block, not an installer.
 
 ## Adding a New Resource
 
