@@ -34,7 +34,7 @@ Plus ephemeral state at `$TMPDIR/claude-statusline/<session_id>`, and the two
 
 | Ghost | Where | Currently handled by |
 |-------|-------|----------------------|
-| pre-`~/.claude` status line | `~/statusline-command.sh` | `install_statusline.sh` migration (as of `4662925`) |
+| pre-`~/.claude` status line | `~/statusline-command.sh` | `install_statusline.sh` migration (as of `fefa2ce`) |
 | `git()` block in the *other* shell's RC | `~/.bashrc` under zsh, or vice versa | a bespoke `if` block, `install_checkout_release.sh:130` |
 
 **The shape of the problem is the split in the Owner column.** Four files are
@@ -58,9 +58,9 @@ resources/lib/install_log.sh        # log_installed, log_path, log_history
 ```
 
 ```
-2026-09-08T14:22:07Z  install_statusline  file  /Users/me/.claude/statusline-command.sh  sha256:9f3c2a1b4d5e  4662925
-2026-09-08T14:22:07Z  install_aliases     line  /Users/me/.zshrc                          sha256:1a2b3c4d5e6f  4662925
-2026-09-08T14:22:08Z  install_checkout    key   ~/.gitconfig#alias.checkout-release       sha256:7e8f9a0b1c2d  4662925
+2026-09-08T14:22:07Z  install_statusline  file  /Users/me/.claude/statusline-command.sh  sha256:9f3c2a1b4d5e  fefa2ce
+2026-09-08T14:22:07Z  install_aliases     line  /Users/me/.zshrc                          sha256:1a2b3c4d5e6f  4ffa324
+2026-09-08T14:22:08Z  install_checkout    key   ~/.gitconfig#alias.checkout-release       sha256:7e8f9a0b1c2d  4ffa324
 ```
 
 Six columns: **timestamp · installer · kind · path · hash · repo sha**.
@@ -277,7 +277,7 @@ three questions in this order:
 **Clean environments can skip this entirely.**
 
 **Fix.** `just install-statusline` — repoints settings.json automatically as of
-4662925, keeps a .bak, and names the orphaned copy.
+fefa2ce, keeps a .bak, and names the orphaned copy.
 ```
 
 **The detector is the product, not the fix.** Most readers are clean, and a
@@ -381,4 +381,4 @@ something to look at before committing to the rest.
 Per step: `just lint` and `just check-install`, which is where the new assertions
 land. Step 5 additionally must show the round-trip test failing when a log entry
 is deliberately removed — a test that cannot fail is not a test, which is how the
-tilde assertion in `4662925` was caught passing under its own bug.
+tilde assertion in `fefa2ce` was caught passing under its own bug.
