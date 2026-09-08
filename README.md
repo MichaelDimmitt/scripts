@@ -61,6 +61,22 @@ just lint                   # check-conventions, then shellcheck every script
 just check-install          # end-to-end: install to a throwaway HOME, assert aliases are live
 ```
 
+### Continuous integration
+
+`.github/workflows/checks.yml` runs `just lint` and `just check-install` on macOS.
+
+**It is disabled on purpose.** `workflow_dispatch` is its only trigger, so nothing runs on a push or a pull request — the file is there to be turned on when you want it, not to start gating merges today. You can still run it by hand from the repo's **Actions** tab to see it pass first.
+
+To enable it, uncomment the two triggers at the top of the file:
+
+```yaml
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [master]
+```
+
 ---
 
 ## Docs
