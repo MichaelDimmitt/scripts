@@ -69,6 +69,21 @@ just lint                   # check-conventions, then shellcheck every script
 | [AGENT_GUIDE.md](./resources/docs/AGENT_GUIDE.md) | Tips for agents navigating this repo and `~/skills` efficiently |
 | [SKILLS_APPROACH.md](./resources/docs/SKILLS_APPROACH.md) | Pros/cons of plugin vs direct `~/skills` reference for Claude skills |
 
+## Templates
+
+Skeletons to copy when adding a script, rather than starting from a blank file.
+
+| File | Purpose |
+|------|---------|
+| [install_template.sh](./resources/templates/install_template.sh) | Starting point for a new `install/*.sh` — sources the three shared libraries, shows the `SKIP: already current` branch beside the one that records a next step, and closes with `next_steps_render` |
+
+```sh
+cp resources/templates/install_template.sh install/install_foo.sh
+chmod +x install/install_foo.sh
+```
+
+The template encodes [the installer contract](./resources/docs/ARCHITECTURE.md#the-installer-contract), which `just lint` enforces — so a copy starts out passing.
+
 ## Extras
 
 Hand-maintained additions that layer on top of generated output.

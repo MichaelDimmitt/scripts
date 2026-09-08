@@ -24,7 +24,8 @@ scripts/
 │   │                      #   plus Claude Code integrations (statusline, hooks)
 │   ├── lib/               # Shell libraries the repo's own scripts source
 │   ├── mappings/          # Key→value lookup tables (pipe-delimited)
-│   ├── templates/         # (future) reusable output templates
+│   ├── templates/         # Skeletons to copy when adding a script
+│   │   └── install_template.sh
 │   ├── lists/             # (future) static enumeration files
 │   └── schemas/           # (future) validation or format definitions
 └── README.md
@@ -139,7 +140,9 @@ Leading with the functional description lets a skimmer get the "what" immediatel
 
 1. Pick a verb that describes what it does (`tell`, `generate`, `install`, etc.)
 2. Name it `verb_noun.sh` in snake_case
-3. Place it in the folder matching its verb (e.g. `tell/tell_foo.sh`)
+3. Place it in the folder matching its verb (e.g. `tell/tell_foo.sh`).
+   For an installer, start from the skeleton rather than a blank file:
+   `cp resources/templates/install_template.sh install/install_foo.sh`
 4. Reference resource files via `${SCRIPT_DIR}/../resources/...`
 5. Source a shared library for anything one of them already owns. See
    **Shared Libraries** above for what each sets and the `SCRIPT_DIR` form to
@@ -186,6 +189,13 @@ record once against that.
 `install_all.sh` is exempt from all four: it is the aggregator that renders the
 combined block, not an installer.
 
+`resources/templates/install_template.sh` is the contract as runnable code: it
+sources all three libraries, records a step in the branch that copied the file
+and none in the `SKIP: already current` branch beside it, and closes with
+`next_steps_render`. Copying it is the shortest path to a compliant installer.
+It keeps a shebang -- the copy needs one -- but stays non-executable, which is
+why the shebang/exec-bit rule below skips `resources/templates/`.
+
 `check/check_conventions.sh` enforces every rule above, plus two the whole repo
 is held to: a file has a shebang if and only if it is executable, and
 `resources/lib/*.sh` are non-executable, shebang-free, and carry
@@ -200,4 +210,5 @@ shellcheck finding.
 | Key→value lookup | `resources/mappings/` | `NAME \| VALUE` (pipe-delimited) |
 | Sourced shell library | `resources/lib/` | `*.sh`, no shebang, `# shellcheck shell=bash` |
 | Reusable text blocks | `resources/templates/` | Plain text or heredoc-ready |
+| Script skeleton | `resources/templates/` | `*.sh`, shebang, non-executable |
 | Static lists | `resources/lists/` | One item per line |

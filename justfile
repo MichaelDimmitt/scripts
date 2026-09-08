@@ -55,4 +55,4 @@ check-conventions:
 
 # Run shellcheck over every script in the repo
 lint: check-conventions
-    shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh
+    shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh resources/templates/*.sh
