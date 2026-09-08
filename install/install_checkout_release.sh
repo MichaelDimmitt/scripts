@@ -17,6 +17,11 @@ source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 # shellcheck source=resources/lib/shell_rc.sh
 source "${SCRIPT_DIR}/../resources/lib/shell_rc.sh"
 
+# next_step/next_steps_render: the closing call to action, recorded rather than
+# printed so `just install-all` can gather every installer's into one block.
+# shellcheck source=resources/lib/next_steps.sh
+source "${SCRIPT_DIR}/../resources/lib/next_steps.sh"
+
 # Announce the target before touching anything, so an unexpected shell shows up
 # as a line to read rather than as an edit to the wrong file.
 echo "==> Shell: $SHELL_NAME -> ${SHELL_RC:-(no RC this script can write)}"
@@ -72,8 +77,25 @@ if [[ -z "$SHELL_RC" ]]; then
   echo "    For the bare 'git checkout release' intercept, add to your shell's config:"
   echo "      - \$HOME/.local/bin on PATH"
   echo "      - a git wrapper calling latest_release for 'checkout release'"
+  next_step_note "Add ~/.local/bin to PATH in your shell's config by hand."
+  next_steps_render
   exit 0
 fi
+
+# Whether to tell the user to re-source is decided by comparing the RC before
+# and after, not by which branch ran. The git() block below is rewritten on
+# every run, but with identical content -- a per-branch next_step there would
+# ask for a reload that changes nothing. A checksum rather than a temp copy:
+# taking one would mean an EXIT trap, which would replace the one next_steps.sh
+# installs to clean up its own file.
+rc_checksum() {
+  if [[ -f "$SHELL_RC" ]]; then
+    cksum < "$SHELL_RC"
+  else
+    echo "absent"
+  fi
+}
+rc_before="$(rc_checksum)"
 
 if [[ -f "$SHELL_RC" ]] && grep -q '\.local/bin' "$SHELL_RC"; then
   echo "==> SKIP: $SHELL_RC already contains .local/bin PATH entry"
@@ -102,6 +124,10 @@ else
   printf '\n%s\n' "$GIT_FUNC" >> "$SHELL_RC"
 fi
 
+if [[ "$(rc_checksum)" != "$rc_before" ]]; then
+  next_step "source $SHELL_RC"
+fi
+
 # A zsh user who ran the version of this script that hardcoded ~/.bashrc still
 # has that copy sitting there. It is inert under zsh but live under bash, where
 # it will shadow this one with whatever the old function said. Point at it
@@ -116,6 +142,7 @@ if [[ -n "$OTHER_RC" && -f "$OTHER_RC" ]] && grep -q 'latest_release' "$OTHER_RC
   echo "==> NOTE: $OTHER_RC also has a latest_release git() function"
   echo "    Left from an earlier install that assumed ~/.bashrc. Harmless under"
   echo "    $SHELL_NAME, but delete the git() block there to avoid a stale copy."
+  next_step_note "Delete the stale git() block from $OTHER_RC."
 fi
 
 # Under bash a login shell reads .bash_profile, not .bashrc, so a function
@@ -124,11 +151,13 @@ shell_rc_warn_login_profile "the git() wrapper"
 
 # Same child-process caveat as install_aliases.sh: the PATH entry and git()
 # function land in the RC file, but this shell already read its RC, so nothing
-# changes here until the user re-sources it.
+# changes here until the user re-sources it. The command itself was recorded
+# where the write happened, so a re-run that changed nothing stays quiet here.
 echo ""
-echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Installed, but ${BOLD}this shell${RESET} has not picked it up yet."
-echo "    ${BOLD}${RED}Run this to load it now:${RESET}"
-echo ""
-echo "      ${BOLD}${CYAN}source ${SHELL_RC}${RESET}"
-echo ""
-echo "    (Or just open a new terminal.)"
+if next_steps_pending; then
+  echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Installed, but ${BOLD}this shell${RESET} has not picked it up yet."
+  next_step_aside "(Or just open a new terminal.)"
+else
+  echo "${BLUE}==>${RESET} ${BOLD}Done.${RESET} Already current -- nothing to do."
+fi
+next_steps_render

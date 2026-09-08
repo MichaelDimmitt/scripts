@@ -92,6 +92,36 @@ instead of naming a file directly.
 Hardcoding `~/.bashrc` is the specific bug this replaces: under zsh, the macOS
 default, it edits a file the user's shell never reads and still reports success.
 
+### Next steps
+
+`resources/lib/next_steps.sh` collects the actions an installer cannot perform
+for the user — sourcing an RC file, restarting Claude Code — and prints them
+once, in one block, at the end.
+
+```sh
+next_step "source $SHELL_RC"                  # a line to copy and paste
+next_step_note "Restart Claude Code to ..."   # an action with no command
+next_step_aside "(Or open a new terminal.)"   # a parenthetical, rendered plain
+next_steps_render                             # at the end of the script
+```
+
+Record a step **inside the branch that made the change**, never unconditionally
+at the end. That is what lets a re-run which changed nothing print nothing.
+Where "did anything change" spans several branches, compare the file before and
+after (`install_checkout_release.sh` checksums the RC) rather than recording
+from each branch.
+
+`NEXT_STEPS_FILE` is the shared scratch file, and whoever creates it renders it:
+
+| `NEXT_STEPS_FILE` | Meaning |
+|---|---|
+| unset | Running standalone. The lib creates the file; `next_steps_render` prints. |
+| set | `install_all.sh` exported it. The script appends and renders nothing; the parent prints the combined block. |
+
+So an installer makes the same calls either way and never asks which mode it is
+in. `next_steps_pending` answers "did *this script* record anything", not "has
+anyone" — it compares against the file size at source time.
+
 ## Comment Style
 
 Order comments mechanic-first, use-case second:
