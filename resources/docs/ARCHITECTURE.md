@@ -8,6 +8,7 @@ This repo is an operating system for shell automation. Structure is intentionall
 
 ```
 scripts/
+├── .github/workflows/     # CI. Present but disabled -- see checks.yml
 ├── tell/                  # Scripts that display or report information
 │   └── tell_*.sh
 ├── generate/              # Scripts that produce or create output

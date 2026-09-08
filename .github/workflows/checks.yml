@@ -1,0 +1,45 @@
+# Runs the repo's own checks: `just lint` (conventions + shellcheck) and
+# `just check-install` (installs into a throwaway HOME and asserts the aliases
+# come out live in a fresh shell).
+#
+# DISABLED ON PURPOSE. `workflow_dispatch` is the only trigger, so nothing runs
+# on a push or a pull request -- this file is here to be turned on later, not to
+# start gating merges today. It can still be run by hand from the Actions tab,
+# which is the point of choosing this over naming the file .yml.disabled: you
+# can see it pass before you rely on it.
+#
+# TO ENABLE: uncomment the two triggers below. Nothing else needs changing.
+
+name: checks
+
+on:
+  workflow_dispatch:
+  # pull_request:
+  # push:
+  #   branches: [master]
+
+jobs:
+  checks:
+    # macOS on purpose, not ubuntu. These scripts target macOS -- zsh as the
+    # default shell, `open -a` aliases, BSD rather than GNU coreutils -- and
+    # BSD/GNU divergence is exactly the class of bug that has already bitten
+    # this repo (a BSD-only `sed -i ''` in generate_cask-aliases.sh). A green
+    # Linux run would be false confidence.
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Both are preinstalled on nothing; brew itself ships with the runner.
+      - name: Install just and shellcheck
+        run: brew install just shellcheck
+
+      # Static: installer contract, shebangs, exec bits, then shellcheck.
+      - name: just lint
+        run: just lint
+
+      # End-to-end: real installs into a temp HOME, then alias liveness probed
+      # from a fresh interactive shell. Sandboxed via HOME and GIT_CONFIG_GLOBAL,
+      # so it is safe to run on a shared runner.
+      - name: just check-install
+        run: just check-install
