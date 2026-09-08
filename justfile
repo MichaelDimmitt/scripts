@@ -48,3 +48,7 @@ install-aliases:
 # Run every install-* script in one pass
 install-all:
     bash install/install_all.sh
+
+# Run shellcheck over every script in the repo
+lint:
+    shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh resources/lib/*.sh

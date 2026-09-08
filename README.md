@@ -53,6 +53,7 @@ just install-checkout-release
 just install-statusline
 just install-aliases
 just install-all            # every install-* script in one pass
+just lint                   # shellcheck every script in the repo
 ```
 
 ---

@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/../resources/lib/colours.sh"
 # Skip any cask whose name already resolves to an executable on PATH —
 # those casks ship their own CLI (e.g. `cursor`, `code`) that accepts paths
 # and args, and an `open -a` alias would shadow it and break `cursor .` etc.
-brew list --cask | while read cask; do
+brew list --cask | while read -r cask; do
   # Check for a real executable on PATH (ignore aliases/functions from this shell).
   if env PATH="$PATH" type -P "$cask" >/dev/null 2>&1; then
     continue

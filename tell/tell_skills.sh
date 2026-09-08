@@ -61,13 +61,19 @@ report_repo() {
     # List skills (top-level dirs and .md files, excluding .git)
     echo ""
     echo "  ${BOLD}Skills available:${RESET}"
-    while IFS= read -r item; do
-        if [[ -d "$repo_path/$item" ]]; then
+    # A glob rather than `ls`, so a skill name with a space stays one entry.
+    # Unmatched globs come through literally, hence the -e guard on an empty
+    # repo. Dotfiles are excluded the way `ls` excluded them -- including the
+    # .git directory, which is why there is no filter here.
+    for item_path in "$repo_path"/*; do
+        [[ -e "$item_path" ]] || continue
+        item="$(basename "$item_path")"
+        if [[ -d "$item_path" ]]; then
             echo "    ${GREEN}▸${RESET} $item/"
         else
             echo "    ${GREEN}▸${RESET} $item"
         fi
-    done < <(ls "$repo_path" | grep -v '^\.git$')
+    done
 }
 
 # ── Main ────────────────────────────────────────────────────
