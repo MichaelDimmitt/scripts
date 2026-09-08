@@ -29,6 +29,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
 | `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
+| `check/check_install.sh` | check | Install into a throwaway `$HOME` and assert the aliases are live in a fresh shell |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
 
 ### Rules
@@ -57,6 +58,7 @@ just install-aliases
 just install-all            # every install-* script in one pass
 just check-conventions      # installer contract, shebangs, exec bits
 just lint                   # check-conventions, then shellcheck every script
+just check-install          # end-to-end: install to a throwaway HOME, assert aliases are live
 ```
 
 ---
@@ -336,11 +338,11 @@ bash tell/tell_installed_skills.sh
 ---
 
 ### `install/install_checkout_release.sh`
-Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in `~/.bashrc`, registers the `git checkout-release` alias, and installs the `git checkout release` / `git checkout release/` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
+Minimal installer that wires up `latest_release` without running the full `generate_cask-aliases.sh`. Copies `bin/latest_release` to `~/.local/bin`, adds it to `PATH` in your shell's interactive RC — `.zshrc` under zsh, `.bashrc` under bash — registers the `git checkout-release` alias, and installs the `git checkout release` / `git checkout release/` shell function intercept. Use this when you only want the release-checkout tooling on a new machine.
 
 ```sh
 bash install/install_checkout_release.sh
-source ~/.bashrc
+source ~/.zshrc      # or ~/.bashrc under bash — the installer tells you which
 ```
 
 ---
@@ -372,7 +374,7 @@ git checkout release          # shell function intercept (also matches release/;
 ```sh
 # clone the repo, then:
 bash install/install_checkout_release.sh
-source ~/.bashrc
+source ~/.zshrc      # or ~/.bashrc under bash — the installer tells you which
 ```
 
 ---
@@ -390,6 +392,31 @@ See [The installer contract](./resources/docs/ARCHITECTURE.md#the-installer-cont
 
 ```sh
 just check-conventions
+```
+
+---
+
+### `check/check_install.sh`
+End-to-end check that an install actually produces *working* aliases. Runs `install_all.sh` against a throwaway `$HOME`, then starts a fresh interactive shell and asks it whether each alias and function is defined. Reports pass/fail counts and exits non-zero on any failure.
+
+Everything else in this repo is checked statically — shellcheck reads the scripts, `check_conventions.sh` reads their shape, `tell_aliases.sh` greps the RC files for a source line. None of that can tell you an alias *works*, only that a line exists somewhere.
+
+**Why a separate shell:** an installer runs as a child process and can never change the alias table of the shell that launched it, so liveness is only observable from a shell started *after* the install. And aliases are not expanded in non-interactive shells — `zsh -c 'type cchats'` reports "not found" on a perfectly good install — so every probe uses `-ic`.
+
+**Asserts, per shell (zsh and bash):**
+- The install wrote the RC file, and it sources the alias file exactly once
+- Every `alias` and `name() {}` in `brew-cask-aliases-additional` is defined in a fresh interactive shell (the list is parsed from the file, so it can't drift)
+- The `git()` wrapper resolves to a shell function, not the plain binary
+- `latest_release` is on `PATH`
+- A second run is a no-op — the property the `next_steps.sh` design exists to produce
+- An unsupported shell (fish) gets no RC file written at all
+
+Nothing touches the real `$HOME`: `HOME` and `GIT_CONFIG_GLOBAL` are both redirected into a temp root that is removed on exit. That second one matters — `install_checkout_release.sh` runs `git config --global`.
+
+Not part of `just lint`, which is static and fast; this runs three installers per shell. Run it before merging anything that touches `install/`.
+
+```sh
+just check-install
 ```
 
 ---

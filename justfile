@@ -53,6 +53,10 @@ install-all:
 check-conventions:
     bash check/check_conventions.sh
 
+# End-to-end: install into a throwaway HOME, assert the aliases come out live
+check-install:
+    bash check/check_install.sh
+
 # Run shellcheck over every script in the repo
 lint: check-conventions
     shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh resources/templates/*.sh
