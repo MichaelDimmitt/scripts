@@ -49,6 +49,10 @@ install-aliases:
 install-all:
     bash install/install_all.sh
 
+# Check repo conventions (installer contract, shebangs, exec bits)
+check-conventions:
+    bash check/check_conventions.sh
+
 # Run shellcheck over every script in the repo
-lint:
-    shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh resources/lib/*.sh
+lint: check-conventions
+    shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh

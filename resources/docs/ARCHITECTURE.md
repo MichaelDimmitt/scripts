@@ -14,6 +14,8 @@ scripts/
 │   └── generate_*.sh
 ├── install/               # Scripts that set up tooling or wire up shell integrations
 │   └── install_*.sh
+├── check/                 # Scripts that verify the repo's own conventions
+│   └── check_*.sh
 ├── bin/                   # Standalone executables (no verb prefix)
 │   └── latest_release
 ├── resources/
@@ -33,7 +35,7 @@ scripts/
 ### Scripts
 - Pattern: `verb_noun.sh`
 - Case: snake_case
-- Verbs: `tell` (display/report), `generate` (produce/create), `install` (set up tooling/shell integrations)
+- Verbs: `tell` (display/report), `generate` (produce/create), `install` (set up tooling/shell integrations), `check` (verify the repo's own conventions)
 
 ### Resource files
 - Mapping files: descriptive noun, `.txt`, pipe-delimited (`NAME | VALUE`)
@@ -151,6 +153,9 @@ Leading with the functional description lets a skimmer get the "what" immediatel
 
 6. If it needs a lookup table, add it to `resources/mappings/`
 7. Add a section for it in README.md under Scripts
+8. Run `just lint` -- it runs `check/check_conventions.sh` over the rules below
+   before shellcheck, so a script that opts out of a shared library fails here
+   rather than at review
 
 ### The installer contract
 
@@ -180,6 +185,13 @@ record once against that.
 
 `install_all.sh` is exempt from all four: it is the aggregator that renders the
 combined block, not an installer.
+
+`check/check_conventions.sh` enforces every rule above, plus two the whole repo
+is held to: a file has a shebang if and only if it is executable, and
+`resources/lib/*.sh` are non-executable, shebang-free, and carry
+`# shellcheck shell=bash`. It reports every violation in one pass and exits
+non-zero, so `just lint` fails on a contract breach the way it fails on a
+shellcheck finding.
 
 ## Adding a New Resource
 
