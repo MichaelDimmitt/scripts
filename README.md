@@ -346,7 +346,9 @@ source ~/.bashrc
 ---
 
 ### `generate/generate_cask-aliases.sh`
-Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from `~/.bashrc`. Re-run whenever you install or remove casks, or on a fresh clone.
+Generates shell aliases for every installed Homebrew cask (e.g. `alias notion="open -a 'Notion'"`), writes them to `~/.brew-cask-aliases`, and sources that file from your shell's interactive RC — `.zshrc` under zsh, `.bashrc` under bash. Then delegates the hand-maintained companion file to `install_aliases.sh`, gathering both scripts' call-to-actions into one closing block. Re-run whenever you install or remove casks, or on a fresh clone; it is idempotent and reports when there was nothing to change.
+
+Takes no options — `--help` prints usage and exits without touching anything.
 
 ```sh
 bash generate/generate_cask-aliases.sh
