@@ -29,6 +29,10 @@ tell-aliases:
 tell-installed-skills:
     bash tell/tell_installed_skills.sh
 
+# Explain every segment of the status line, one line each
+tell-statusline:
+    bash tell/tell_statusline.sh
+
 # Generate shell aliases for every installed Homebrew cask
 generate-cask-aliases:
     bash generate/generate_cask-aliases.sh

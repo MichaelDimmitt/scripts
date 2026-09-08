@@ -24,6 +24,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
 | `tell/tell_claude_skills.sh` | tell | Snapshot Claude Code skill and plugin locations |
 | `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor) |
+| `tell/tell_statusline.sh` | tell | Explain every segment of the status line, one line each |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
@@ -51,6 +52,7 @@ just tell-rcs
 just tell-skills
 just tell-claude-skills
 just tell-installed-skills
+just tell-statusline        # what each segment of the status line means
 just generate-cask-aliases
 just install-checkout-release
 just install-statusline
