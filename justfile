@@ -41,7 +41,7 @@ generate-cask-aliases:
 install-checkout-release:
     bash install/install_checkout_release.sh
 
-# Copy the status line to ~/.claude and check settings.json points at it
+# Copy the status line to ~/.claude and repoint settings.json if it runs an older copy
 install-statusline:
     bash install/install_statusline.sh
 

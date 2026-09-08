@@ -175,6 +175,149 @@ check_shell() {
 }
 
 # ---------------------------------------------------------------------------
+# Status line settings
+# ---------------------------------------------------------------------------
+
+# make_home above seeds settings.json already pointing at the right absolute
+# path, so install_statusline.sh reaches its OK branch and the re-run assertion
+# means what it says. That is deliberate, and it is also a blind spot: the state
+# every existing machine is actually in -- a statusLine pointing at the
+# pre-~/.claude copy at $HOME/statusline-command.sh -- was never once exercised,
+# which is how an installed bar sat two features behind for weeks while every
+# check in the repo reported green.
+#
+# These run install_statusline.sh alone, against a settings.json seeded into one
+# specific state, and assert what the file looks like afterwards.
+
+# Writes a settings.json holding $2 as the statusLine command, plus an unrelated
+# key. The extra key is not decoration: the migration edits this file in place,
+# and "did it preserve everything it was not asked to change" is the property
+# that makes editing it acceptable at all.
+seed_settings() {
+  local h="$1" cmd="$2"
+  mkdir -p "$h/.claude"
+  cat > "$h/.claude/settings.json" <<JSON
+{
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "${cmd}",
+    "refreshInterval": 30
+  }
+}
+JSON
+}
+
+run_statusline_install() {
+  ( HOME="$1" bash "${REPO_ROOT}/install/install_statusline.sh" ) 2>&1
+}
+
+# The configured command, read the way the installer reads it.
+configured_command() {
+  jq -r '.statusLine.command // empty' "$1/.claude/settings.json" 2>/dev/null
+}
+
+check_statusline_settings() {
+  local h out before
+
+  echo ""
+  echo "${BLUE}==>${RESET} ${BOLD}status line settings${RESET}"
+
+  if ! command -v jq > /dev/null 2>&1; then
+    echo "    ${YELLOW}skip${RESET} jq not installed"
+    return 0
+  fi
+
+  # --- The migration: the state a machine installed before ~/.claude is in ---
+  h="$TMPROOT/statusline-legacy"
+  mkdir -p "$h"
+  seed_settings "$h" "bash $h/statusline-command.sh"
+  cp "${REPO_ROOT}/resources/extras/statusline-command.sh" "$h/statusline-command.sh"
+  out="$(run_statusline_install "$h")"
+
+  if [[ "$(configured_command "$h")" == "bash $h/.claude/statusline-command.sh" ]]; then
+    ok "legacy path is repointed at ~/.claude"
+  else
+    no "legacy path is repointed at ~/.claude" "still: $(configured_command "$h")"
+  fi
+
+  if [[ -f "$h/.claude/settings.json.bak" ]]; then
+    ok "migration leaves a backup"
+  else
+    no "migration leaves a backup" "settings.json was edited with no way back"
+  fi
+
+  # The edit must be surgical. An installer that rewrites a hand-maintained
+  # config is only tolerable if it touches exactly the key it named.
+  if [[ "$(jq -r '.model' "$h/.claude/settings.json")" == "opus" ]]; then
+    ok "migration preserves unrelated settings"
+  else
+    no "migration preserves unrelated settings" "the rest of settings.json did not survive the edit"
+  fi
+
+  # The orphan is reported, not deleted: it lives outside anything the installer
+  # created, and removing it is the user's call.
+  if echo "$out" | grep -q "rm $h/statusline-command.sh"; then
+    ok "orphaned copy is reported, not deleted"
+  else
+    no "orphaned copy is reported, not deleted" "no rm suggested for $h/statusline-command.sh"
+  fi
+  if [[ -f "$h/statusline-command.sh" ]]; then
+    ok "orphaned copy is left on disk"
+  else
+    no "orphaned copy is left on disk" "the installer deleted a file it did not create"
+  fi
+
+  out="$(run_statusline_install "$h")"
+  if echo "$out" | grep -q 'WARN'; then
+    no "re-run after migration is clean" "second run still warns"
+  else
+    ok "re-run after migration is clean"
+  fi
+
+  # --- The tilde form: correct, portable, and previously warned at ---
+  h="$TMPROOT/statusline-tilde"
+  mkdir -p "$h"
+  seed_settings "$h" "bash ~/.claude/statusline-command.sh"
+  before="$(cat "$h/.claude/settings.json")"
+  out="$(run_statusline_install "$h")"
+
+  # Both halves are load-bearing. A literal-grep regression does not warn here
+  # -- it takes the tilde form for a stale pointer and "migrates" a setting that
+  # was already right, silently and successfully. So the assertion is that the
+  # installer neither complained nor decided there was work to do.
+  if echo "$out" | grep -qE 'WARN|Migrating'; then
+    no "tilde form is recognised as correct" "warned at, or migrated, a correct setting"
+  else
+    ok "tilde form is recognised as correct"
+  fi
+  if [[ "$(cat "$h/.claude/settings.json")" == "$before" ]]; then
+    ok "tilde form is left byte-identical"
+  else
+    no "tilde form is left byte-identical" "a correct setting was rewritten"
+  fi
+
+  # --- Someone else's bar: not ours to migrate ---
+  h="$TMPROOT/statusline-other"
+  mkdir -p "$h"
+  seed_settings "$h" "bash $h/my-own-bar.sh"
+  printf '#!/usr/bin/env bash\necho hi\n' > "$h/my-own-bar.sh"
+  before="$(cat "$h/.claude/settings.json")"
+  out="$(run_statusline_install "$h")"
+
+  if [[ "$(cat "$h/.claude/settings.json")" == "$before" ]]; then
+    ok "a third-party status line is left alone"
+  else
+    no "a third-party status line is left alone" "the installer hijacked an unrelated statusLine"
+  fi
+  if echo "$out" | grep -q 'WARN'; then
+    ok "a third-party status line is reported"
+  else
+    no "a third-party status line is reported" "this install changed nothing and said nothing"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 
 echo "${BLUE}==>${RESET} ${BOLD}End-to-end install check${RESET}"
 echo "    sandbox: $TMPROOT"
@@ -186,6 +329,10 @@ fi
 
 check_shell /bin/zsh
 check_shell /bin/bash
+
+# Shell-independent: this is about settings.json, not about aliases, so it runs
+# once rather than per shell.
+check_statusline_settings
 
 # An unsupported shell must be told, not guessed at. The bug this guards is the
 # tempting fallback: writing bash syntax into ~/.bashrc for a fish user, which

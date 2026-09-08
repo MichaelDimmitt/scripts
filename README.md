@@ -27,7 +27,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_statusline.sh` | tell | Explain every segment of the status line, one line each |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
-| `install/install_statusline.sh` | install | Copy the status line to `~/.claude` and verify settings.json points at it |
+| `install/install_statusline.sh` | install | Copy the status line to `~/.claude`, and repoint settings.json if it still runs an older copy |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
 | `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
 | `check/check_install.sh` | check | Install into a throwaway `$HOME` and assert the aliases are live in a fresh shell |
