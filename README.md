@@ -259,7 +259,7 @@ The per-command cost segment is the one feature none of the popular ones have:
 the payload carries only a cumulative total, so this-command cost has to be
 inferred from turn boundaries.
 
-Planned additions are tracked in [plan2.md](./plan2.md).
+Outstanding work, and how to pick it up, is tracked in [ROADMAP.md](./ROADMAP.md).
 
 ### Claude Code context monitor
 
