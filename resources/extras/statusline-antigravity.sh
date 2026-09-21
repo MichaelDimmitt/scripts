@@ -74,9 +74,29 @@ jq_program='
       else "\(./ 60 | floor)m" end
     else null end;
 
-  # Quota extraction: find first bucket or direct quota object
+  # Quota extraction: support rate_limits (3p-5h, five_hour, etc.) or quota buckets
   def extract_quota:
-    if (.quota | type) == "object" then
+    if (.rate_limits | type) == "object" then
+      ((.rate_limits["3p-5h"] // .rate_limits.five_hour // .rate_limits["3p_five_hour"]) // null) as $five
+      | ((.rate_limits["3p-weekly"] // .rate_limits.seven_day // .rate_limits["3p_seven_day"] // .rate_limits.weekly) // null) as $week
+      | if $five != null then
+          {
+            name: (if .rate_limits["3p-5h"] != null then "3p-5h" else "5h" end),
+            val: {
+              used_percentage: ($five.used_percentage // (if $five.remaining_percentage != null then (100 - $five.remaining_percentage) else null end)),
+              reset_in_seconds: ($five.resets_in // $five.reset_time // (if $five.resets_at != null and $five.resets_at > 1000000000 then ($five.resets_at - (now | floor)) else null end))
+            }
+          }
+        elif $week != null then
+          {
+            name: (if .rate_limits["3p-weekly"] != null then "3p-weekly" else "weekly" end),
+            val: {
+              used_percentage: ($week.used_percentage // (if $week.remaining_percentage != null then (100 - $week.remaining_percentage) else null end)),
+              reset_in_seconds: ($week.resets_in // $week.reset_time // (if $week.resets_at != null and $week.resets_at > 1000000000 then ($week.resets_at - (now | floor)) else null end))
+            }
+          }
+        else null end
+    elif (.quota | type) == "object" then
       if .quota.remaining_fraction != null or .quota.used_percentage != null then
         {name: "quota", val: .quota}
       else
