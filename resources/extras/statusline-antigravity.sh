@@ -74,42 +74,25 @@ jq_program='
       else "\(./ 60 | floor)m" end
     else null end;
 
-  # Quota extraction: support rate_limits (3p-5h, five_hour, etc.) or quota buckets
-  def extract_quota:
-    if (.rate_limits | type) == "object" then
-      ((.rate_limits["3p-5h"] // .rate_limits.five_hour // .rate_limits["3p_five_hour"]) // null) as $five
-      | ((.rate_limits["3p-weekly"] // .rate_limits.seven_day // .rate_limits["3p_seven_day"] // .rate_limits.weekly) // null) as $week
-      | if $five != null then
-          {
-            name: (if .rate_limits["3p-5h"] != null then "3p-5h" else "5h" end),
-            val: {
-              used_percentage: ($five.used_percentage // (if $five.remaining_percentage != null then (100 - $five.remaining_percentage) else null end)),
-              reset_in_seconds: ($five.resets_in // $five.reset_time // (if $five.resets_at != null and $five.resets_at > 1000000000 then ($five.resets_at - (now | floor)) else null end))
-            }
-          }
-        elif $week != null then
-          {
-            name: (if .rate_limits["3p-weekly"] != null then "3p-weekly" else "weekly" end),
-            val: {
-              used_percentage: ($week.used_percentage // (if $week.remaining_percentage != null then (100 - $week.remaining_percentage) else null end)),
-              reset_in_seconds: ($week.resets_in // $week.reset_time // (if $week.resets_at != null and $week.resets_at > 1000000000 then ($week.resets_at - (now | floor)) else null end))
-            }
-          }
-        else null end
-    elif (.quota | type) == "object" then
-      if .quota.remaining_fraction != null or .quota.used_percentage != null then
-        {name: "quota", val: .quota}
-      else
-        (.quota | to_entries | map(select(.value | type == "object")) | first // null) as $first
-        | if $first != null then
-            {
-              name: (if ($first.key | test("weekly"; "i")) then "weekly"
-                     elif ($first.key | test("daily"; "i")) then "daily"
-                     else ($first.key | sub("^(gemini|google|agy)[-_]"; "")) end),
-              val: $first.value
-            }
-          else null end
-      end
+  def get_obj_pct:
+    if . == null then null
+    elif .used_percentage != null then (.used_percentage | pct)
+    elif .remaining_percentage != null then ((100 - .remaining_percentage + 0.00001) | pct)
+    elif .remaining_fraction != null then (((1 - .remaining_fraction) * 100 + 0.00001) | pct)
+    else null end;
+
+  def get_obj_sec:
+    if . == null then null
+    elif .reset_in_seconds != null then .reset_in_seconds
+    elif .resets_in != null then .resets_in
+    elif .resets_at != null and .resets_at > 1000000000 then (.resets_at - (now | floor))
+    elif .resets_at != null then .resets_at
+    elif .reset_time != null then
+      if (.reset_time | type) == "number" then
+        (if .reset_time > 1000000000 then (.reset_time - (now | floor)) else .reset_time end)
+      elif (.reset_time | type) == "string" then
+        (try ((.reset_time | fromdateiso8601) - (now | floor)) catch null)
+      else null end
     else null end;
 
   # Active subagents: count running/active or non-terminated agents
@@ -155,18 +138,49 @@ jq_program='
      else "" end) as $cmd_cost
   | (if $total_cost == null and $tok == 0 then $state
      else "\($total_cost // "null") \($cost_turn.b // "null") \($cost_turn.a // 0) \($tok)" end) as $new_state
-  | (. | extract_quota) as $q
-  | (if $q != null then
-       (if $q.val.used_percentage != null then ($q.val.used_percentage | pct)
-        elif $q.val.remaining_fraction != null then (((1 - $q.val.remaining_fraction) * 100) | pct)
-        else null end | if . != null then (floor | tostring) else "" end)
-     else "" end) as $quota_pct
-  | (if $q != null and $quota_pct != "" then
-       ($q.name // "quota")
-     else "" end) as $quota_label
-  | (if $q != null and $quota_pct != "" then
-       ($q.val.reset_in_seconds | fmt_sec // "")
-     else "" end) as $quota_rem
+  | (.model.display_name // .model.id // "") as $m
+  | ($m | test("gemini"; "i")) as $is_gemini
+  | (.rate_limits // .quota // {}) as $q
+  | (if ($q | type) == "object" then
+       if $q.remaining_fraction != null or $q.used_percentage != null then
+         {
+           five: null, five_lbl: "",
+           week: $q, week_lbl: "quota"
+         }
+       elif $is_gemini then
+         {
+           five: ($q["gemini-5h"] // $q.gemini_5h // $q["5h"] // $q.five_hour // $q["3p-5h"]),
+           five_lbl: (if $q["gemini-5h"] != null or $q.gemini_5h != null or $q["5h"] != null or $q.five_hour != null then "5h" elif $q["3p-5h"] != null then "3p-5h" else "" end),
+           week: ($q["gemini-weekly"] // $q.gemini_weekly // $q.weekly // $q.seven_day // $q["7d"] // $q["3p-weekly"]),
+           week_lbl: (if $q["gemini-weekly"] != null or $q.gemini_weekly != null or $q.weekly != null then "weekly" elif $q.seven_day != null or $q["7d"] != null then "7d" elif $q["3p-weekly"] != null then "3p-weekly" else "" end)
+         }
+       else
+         {
+           five: ($q["3p-5h"] // $q["5h"] // $q.five_hour // $q["gemini-5h"]),
+           five_lbl: (if $q["3p-5h"] != null then "3p-5h" elif $q["5h"] != null or $q.five_hour != null or $q["gemini-5h"] != null then "5h" else "" end),
+           week: ($q["3p-weekly"] // $q.seven_day // $q["7d"] // $q.weekly // $q["gemini-weekly"]),
+           week_lbl: (if $q["3p-weekly"] != null then "3p-weekly" elif $q.seven_day != null or $q["7d"] != null then "7d" elif $q.weekly != null or $q["gemini-weekly"] != null then "weekly" else "" end)
+         }
+       end
+     else {} end) as $buckets
+  | (if $buckets.five == null and $buckets.week == null and ($q | type) == "object" then
+       ($q | to_entries | map(select(.value | type == "object")) | first // null) as $first
+       | if $first != null then
+           {
+             five: null, five_lbl: "",
+             week: $first.value,
+             week_lbl: (if ($first.key | test("weekly"; "i")) then "weekly"
+                        elif ($first.key | test("daily"; "i")) then "daily"
+                        else ($first.key | sub("^(gemini|google|agy)[-_]"; "")) end)
+           }
+         else $buckets end
+     else $buckets end) as $resolved
+  | ($resolved.five | get_obj_pct | if . != null then (floor | tostring) else "" end) as $five_pct
+  | (if $five_pct != "" then ($resolved.five_lbl // "5h") else "" end) as $five_lbl
+  | (if $five_pct != "" then ($resolved.five | get_obj_sec | fmt_sec // "") else "" end) as $five_rem
+  | ($resolved.week | get_obj_pct | if . != null then (floor | tostring) else "" end) as $week_pct
+  | (if $week_pct != "" then ($resolved.week_lbl // "weekly") else "" end) as $week_lbl
+  | (if $week_pct != "" then ($resolved.week | get_obj_sec | fmt_sec // "") else "" end) as $week_rem
   | [
       (.workspace.current_dir // .cwd // ""),
       (.vcs.branch // ""),
@@ -179,9 +193,12 @@ jq_program='
       (if $ctx_ok
        then (((.context.used_percentage // .context_window.used_percentage) | pct) // ($tok * 100 / $size)) | show
        else "" end),
-      $quota_label,
-      $quota_pct,
-      $quota_rem,
+      $five_lbl,
+      $five_pct,
+      $five_rem,
+      $week_lbl,
+      $week_pct,
+      $week_rem,
       (active_subagents | if . > 0 then tostring else "" end),
       (if $total_cost == null then "" else ($total_cost | tostring) end),
       $cmd_cost,
@@ -201,9 +218,12 @@ effort=""
 ctx_used_k=""
 ctx_size_k=""
 ctx_pct=""
-quota_label=""
-quota_pct=""
-quota_rem=""
+five_label=""
+five_pct=""
+five_rem=""
+week_label=""
+week_pct=""
+week_rem=""
 agent_count=""
 cost=""
 cmd_cost=""
@@ -226,15 +246,18 @@ if command -v jq >/dev/null 2>&1; then
       7) ctx_used_k=$value ;;
       8) ctx_size_k=$value ;;
       9) ctx_pct=$value ;;
-      10) quota_label=$value ;;
-      11) quota_pct=$value ;;
-      12) quota_rem=$value ;;
-      13) agent_count=$value ;;
-      14) cost=$value ;;
-      15) cmd_cost=$value ;;
-      16) subagent_cost=$value ;;
-      17) json_cols=$value ;;
-      18) new_state=$value ;;
+      10) five_label=$value ;;
+      11) five_pct=$value ;;
+      12) five_rem=$value ;;
+      13) week_label=$value ;;
+      14) week_pct=$value ;;
+      15) week_rem=$value ;;
+      16) agent_count=$value ;;
+      17) cost=$value ;;
+      18) cmd_cost=$value ;;
+      19) subagent_cost=$value ;;
+      20) json_cols=$value ;;
+      21) new_state=$value ;;
     esac
   done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
 fi
@@ -314,19 +337,34 @@ if [ -n "$ctx_pct" ]; then
     "  ctx ${ctx_used_k}k/${ctx_size_k}k (${ctx_pct}%)"
 fi
 
-# Model quota / Rate limit usage
-if [ -n "$quota_pct" ]; then
-  pct_colour "$quota_pct"
-  quota_rem_seg=""
-  quota_rem_plain=""
-  if [ -n "$quota_rem" ]; then
-    quota_rem_seg=" (${quota_rem})"
-    quota_rem_plain=" (${quota_rem})"
+# Model quota / Rate limit usage (5h / short window)
+if [ -n "$five_pct" ]; then
+  pct_colour "$five_pct"
+  five_rem_seg=""
+  five_rem_plain=""
+  if [ -n "$five_rem" ]; then
+    five_rem_seg=" (${five_rem})"
+    five_rem_plain=" (${five_rem})"
   fi
-  quota_name=${quota_label:-quota}
+  lbl=${five_label:-5h}
   add_segment \
-    "  ${CYAN}${quota_name}${RESET} ${_colour}${quota_pct}%${RESET}${quota_rem_seg}" \
-    "  ${quota_name} ${quota_pct}%${quota_rem_plain}"
+    "  ${CYAN}${lbl}${RESET} ${_colour}${five_pct}%${RESET}${five_rem_seg}" \
+    "  ${lbl} ${five_pct}%${five_rem_plain}"
+fi
+
+# Model quota / Rate limit usage (weekly / long window)
+if [ -n "$week_pct" ]; then
+  pct_colour "$week_pct"
+  week_rem_seg=""
+  week_rem_plain=""
+  if [ -n "$week_rem" ]; then
+    week_rem_seg=" (${week_rem})"
+    week_rem_plain=" (${week_rem})"
+  fi
+  lbl=${week_label:-weekly}
+  add_segment \
+    "  ${CYAN}${lbl}${RESET} ${_colour}${week_pct}%${RESET}${week_rem_seg}" \
+    "  ${lbl} ${week_pct}%${week_rem_plain}"
 fi
 
 # Subagents: active/running count

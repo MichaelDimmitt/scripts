@@ -255,6 +255,42 @@ case_header "empty quota" "$out"
 dont "omits quota segment"    "$out" "weekly"
 dont "omits generic quota"    "$out" "quota"
 
+# 16. Dual Gemini quotas (gemini-5h + gemini-weekly alongside unused 3p-5h)
+payload_gemini_dual='{
+  "workspace": {"current_dir": "/Users/test/project"},
+  "model": {"display_name": "Gemini 3.8 Flash (High)", "effort": "high"},
+  "quota": {
+    "3p-5h": {"remaining_fraction": 1, "reset_in_seconds": 17924},
+    "3p-weekly": {"remaining_fraction": 1, "reset_in_seconds": 604724},
+    "gemini-5h": {"remaining_fraction": 0.55271, "reset_in_seconds": 13151},
+    "gemini-weekly": {"remaining_fraction": 0.9241483, "reset_in_seconds": 599951}
+  }
+}'
+out=$(COLUMNS=200 render_json "$payload_gemini_dual")
+case_header "dual gemini quota" "$out"
+want "shows 5h quota"         "$out" "5h 44%"
+want "shows 5h countdown"     "$out" "(3h39m)"
+want "shows weekly quota"     "$out" "weekly 7%"
+want "shows weekly countdown" "$out" "(6d22h)"
+dont "does not show 3p-5h"    "$out" "3p-5h"
+
+# 17. 3p model quota selection
+payload_3p_model='{
+  "workspace": {"current_dir": "/Users/test/project"},
+  "model": {"display_name": "Claude 3.7 Sonnet"},
+  "quota": {
+    "3p-5h": {"remaining_fraction": 0.8, "reset_in_seconds": 7200},
+    "3p-weekly": {"remaining_fraction": 0.9, "reset_in_seconds": 86400}
+  }
+}'
+out=$(COLUMNS=200 render_json "$payload_3p_model")
+case_header "3p model quota" "$out"
+want "shows 3p-5h label"      "$out" "3p-5h 20%"
+want "shows 3p-5h countdown"  "$out" "(2h0m)"
+want "shows 3p-weekly label"  "$out" "3p-weekly 10%"
+want "shows 3p-weekly countdown" "$out" "(1d0h)"
+
 printf '\nstatusline-antigravity.sh: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1
+
 

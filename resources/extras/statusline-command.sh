@@ -110,7 +110,8 @@ jq_program='
   def get_pct:
     if . == null then null
     elif .used_percentage != null then (.used_percentage | pct)
-    elif .remaining_percentage != null then ((100 - .remaining_percentage) | pct)
+    elif .remaining_percentage != null then ((100 - .remaining_percentage + 0.00001) | pct)
+    elif .remaining_fraction != null then (((1 - .remaining_fraction) * 100 + 0.00001) | pct)
     else null end;
 
   # "Now" comes from jq rather than bash: $EPOCHSECONDS needs bash 5, and stock
@@ -143,9 +144,19 @@ jq_program='
   # no denominator and the whole context segment is omitted rather than shown
   # against a zero.
   | ($tok > 0 and $size > 0) as $ctx_ok
+  | (.model.display_name // .model.id // "") as $m
+  | ($m | test("gemini"; "i")) as $is_gemini
   | (.rate_limits // .quota // {}) as $rl
-  | ($rl["3p-5h"] // $rl.five_hour // $rl["3p_five_hour"] // $rl["5h"] // {}) as $five
-  | ($rl["3p-weekly"] // $rl.seven_day // $rl["3p_seven_day"] // $rl.weekly // $rl["7d"] // {}) as $week
+  | (if $is_gemini then
+       ($rl["gemini-5h"] // $rl.gemini_5h // $rl.five_hour // $rl["5h"] // $rl["3p-5h"] // {})
+     else
+       ($rl.five_hour // $rl["5h"] // $rl["3p-5h"] // $rl["3p_five_hour"] // $rl["gemini-5h"] // {})
+     end) as $five
+  | (if $is_gemini then
+       ($rl["gemini-weekly"] // $rl.gemini_weekly // $rl.weekly // $rl.seven_day // $rl["7d"] // $rl["3p-weekly"] // {})
+     else
+       ($rl.seven_day // $rl["7d"] // $rl.weekly // $rl["3p-weekly"] // $rl["3p_seven_day"] // $rl["gemini-weekly"] // {})
+     end) as $week
   | [
       (.workspace.current_dir // .cwd // ""),
       (.model.display_name // ""),
@@ -160,14 +171,20 @@ jq_program='
        then ((.context_window.used_percentage | pct) // ($tok * 100 / $size)) | show
        else "" end),
       ($five | get_pct | show),
-      (($five.resets_at // $five.resets_in // $five.reset_time) | remaining($n) // ""),
+      (($five.reset_in_seconds // $five.resets_at // $five.resets_in // $five.reset_time) | remaining($n) // ""),
       ($week | get_pct | show),
-      (($week.resets_at // $week.resets_in // $week.reset_time) | remaining($n) // ""),
+      (($week.reset_in_seconds // $week.resets_at // $week.resets_in // $week.reset_time) | remaining($n) // ""),
       (if $turn == null then "" else ($total - $turn.b | tostring) end),
       (if $turn == null then $state
        else "\($total) \($turn.b) \($turn.a)" end),
-      (if $rl["3p-5h"] != null then "3p-5h" else "5h" end),
-      (if $rl["3p-weekly"] != null then "3p-weekly" else "7d" end)
+      (if $is_gemini then "5h"
+       elif $rl.five_hour != null or $rl["5h"] != null then "5h"
+       elif $rl["3p-5h"] != null then "3p-5h"
+       else "5h" end),
+      (if $is_gemini then (if $rl.seven_day != null or $rl["7d"] != null then "7d" else "weekly" end)
+       elif $rl.seven_day != null or $rl["7d"] != null then "7d"
+       elif $rl["3p-weekly"] != null then "3p-weekly"
+       else "7d" end)
     ]
   | .[]
 '
