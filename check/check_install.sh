@@ -390,6 +390,54 @@ JSON
   fi
 }
 
+# --- Prompt skill install --------------------------------------------------
+check_prompt_skill_install() {
+  local h out
+
+  echo ""
+  echo "${BLUE}==>${RESET} ${BOLD}prompt skill install${RESET}"
+
+  h="$TMPROOT/prompt-skill"
+  mkdir -p "$h"
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_prompt_skill.sh")"
+
+  if [[ -f "$h/.claude/skills/prompt/SKILL.md" ]]; then
+    ok "claude prompt skill installed"
+  else
+    no "claude prompt skill installed" "file missing in ~/.claude/skills/prompt"
+  fi
+
+  if [[ -f "$h/.gemini/antigravity-cli/skills/prompt/SKILL.md" ]]; then
+    ok "antigravity prompt skill installed"
+  else
+    no "antigravity prompt skill installed" "file missing in ~/.gemini/antigravity-cli/skills/prompt"
+  fi
+
+  if [[ -f "$h/.gemini/config/skills/prompt/SKILL.md" ]]; then
+    ok "antigravity config prompt skill installed"
+  else
+    no "antigravity config prompt skill installed" "file missing in ~/.gemini/config/skills/prompt"
+  fi
+
+  # Verify backup creation on update
+  echo "modified skill" > "$h/.claude/skills/prompt/SKILL.md"
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_prompt_skill.sh")"
+
+  if [[ -f "$h/.claude/skills/prompt/SKILL.md.bak" ]]; then
+    ok "prompt skill leaves backup when updating"
+  else
+    no "prompt skill leaves backup when updating" "SKILL.md.bak not created"
+  fi
+
+  # Idempotent re-run
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_prompt_skill.sh")"
+  if echo "$out" | grep -q 'SKIP: already current'; then
+    ok "prompt skill re-run reports already current"
+  else
+    no "prompt skill re-run reports already current" "did not report skip"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 
 echo "${BLUE}==>${RESET} ${BOLD}End-to-end install check${RESET}"
@@ -403,10 +451,11 @@ fi
 check_shell /bin/zsh
 check_shell /bin/bash
 
-# Shell-independent: this is about settings.json, not about aliases, so it runs
-# once rather than per shell.
+# Shell-independent: this is about settings.json and skills, not about aliases,
+# so it runs once rather than per shell.
 check_statusline_settings
 check_statusline_antigravity_settings
+check_prompt_skill_install
 
 # An unsupported shell must be told, not guessed at. The bug this guards is the
 # tempting fallback: writing bash syntax into ~/.bashrc for a fish user, which

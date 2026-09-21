@@ -53,6 +53,10 @@ install-statusline:
 install-statusline-antigravity:
     bash install/install_statusline_antigravity.sh
 
+# Install the /prompt skill to Claude Code and Antigravity CLI
+install-prompt-skill:
+    bash install/install_prompt_skill.sh
+
 # Install cl/cx/cresume/cresumef aliases and source them from your shell RC
 install-aliases:
     bash install/install_aliases.sh
