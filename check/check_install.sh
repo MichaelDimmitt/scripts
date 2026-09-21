@@ -317,6 +317,79 @@ check_statusline_settings() {
   fi
 }
 
+# --- Antigravity CLI status line settings ----------------------------------
+check_statusline_antigravity_settings() {
+  local h out before
+
+  echo ""
+  echo "${BLUE}==>${RESET} ${BOLD}antigravity status line settings${RESET}"
+
+  if ! command -v jq > /dev/null 2>&1; then
+    echo "    ${YELLOW}skip${RESET} jq not installed"
+    return 0
+  fi
+
+  # --- Fresh install without existing settings.json ---
+  h="$TMPROOT/statusline-agy-fresh"
+  mkdir -p "$h"
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_statusline_antigravity.sh")"
+
+  if [[ -x "$h/.gemini/antigravity-cli/statusline-antigravity.sh" ]]; then
+    ok "antigravity script copied and executable"
+  else
+    no "antigravity script copied and executable" "missing or not +x"
+  fi
+
+  if [[ "$(jq -r '.statusLine.command // empty' "$h/.gemini/antigravity-cli/settings.json" 2>/dev/null)" == "bash ~/.gemini/antigravity-cli/statusline-antigravity.sh" ]]; then
+    ok "antigravity statusLine command configured"
+  else
+    no "antigravity statusLine command configured" "command missing or incorrect"
+  fi
+
+  if [[ "$(jq -r '.statusLine.stack_with_default // empty' "$h/.gemini/antigravity-cli/settings.json" 2>/dev/null)" == "true" ]]; then
+    ok "antigravity stack_with_default set to true"
+  else
+    no "antigravity stack_with_default set to true" "stack_with_default missing or false"
+  fi
+
+  # --- Install against existing settings.json with other keys ---
+  h="$TMPROOT/statusline-agy-existing"
+  mkdir -p "$h/.gemini/antigravity-cli"
+  cat > "$h/.gemini/antigravity-cli/settings.json" <<'JSON'
+{
+  "trustedWorkspaces": ["/Users/test/scripts"]
+}
+JSON
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_statusline_antigravity.sh")"
+
+  if [[ -f "$h/.gemini/antigravity-cli/settings.json.bak" ]]; then
+    ok "antigravity config leaves a backup"
+  else
+    no "antigravity config leaves a backup" "settings.json.bak not created"
+  fi
+
+  if [[ "$(jq -r '.trustedWorkspaces[0] // empty' "$h/.gemini/antigravity-cli/settings.json" 2>/dev/null)" == "/Users/test/scripts" ]]; then
+    ok "antigravity config preserves unrelated keys"
+  else
+    no "antigravity config preserves unrelated keys" "trustedWorkspaces was lost"
+  fi
+
+  # --- Re-run is clean (idempotent) ---
+  before="$(cat "$h/.gemini/antigravity-cli/settings.json")"
+  out="$(HOME="$h" bash "${REPO_ROOT}/install/install_statusline_antigravity.sh")"
+  if echo "$out" | grep -q 'SKIP: already current'; then
+    ok "antigravity re-run reports already current"
+  else
+    no "antigravity re-run reports already current" "did not report skip"
+  fi
+
+  if [[ "$(cat "$h/.gemini/antigravity-cli/settings.json")" == "$before" ]]; then
+    ok "antigravity re-run leaves settings.json byte-identical"
+  else
+    no "antigravity re-run leaves settings.json byte-identical" "settings.json modified on re-run"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 
 echo "${BLUE}==>${RESET} ${BOLD}End-to-end install check${RESET}"
@@ -333,6 +406,7 @@ check_shell /bin/bash
 # Shell-independent: this is about settings.json, not about aliases, so it runs
 # once rather than per shell.
 check_statusline_settings
+check_statusline_antigravity_settings
 
 # An unsupported shell must be told, not guessed at. The bug this guards is the
 # tempting fallback: writing bash syntax into ~/.bashrc for a fish user, which

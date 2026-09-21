@@ -4,6 +4,16 @@ alias cl="claude --dangerously-skip-permissions"
 # Same idea for Codex: start a session with approval prompts bypassed.
 alias cx="codex --yolo"
 
+# Google retired the Gemini CLI on 18 June 2026 and replaced it with the
+# Antigravity CLI. Personal Google accounts stopped being served that day: the
+# old binary still starts and still loads its cached credentials, then fails
+# with IneligibleTierError / UNSUPPORTED_CLIENT. So `gemini` is pointed at its
+# replacement rather than left to reach a tool that cannot answer. The flags
+# that matter line up -- `agy -p "..."` is the one-shot, as it was.
+# Drop this line if you ever hold a Code Assist Standard/Enterprise seat or a
+# paid Agent Platform key, both of which the real gemini still serves.
+alias gemini="agy"
+
 # Resume Claude with permissions bypass enabled (toggle with Shift+Tab in Claude Code)
 # Use when you have safe tasks ahead (e.g. editing commits) and don't want constant permission prompts.
 alias cresume="claude -c --dangerously-skip-permissions"

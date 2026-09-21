@@ -91,14 +91,28 @@ jq_program='
   # A timestamp at or before now yields null, not a negative duration. Claude Code
   # drops a window once its resets_at passes, so a stale payload is the realistic
   # way to get one, and the honest render is no countdown rather than "-3m".
+  # A resets_at epoch rendered as time-from-now, or relative seconds duration.
+  # Two units, never three: "2d4h", "1h23m", "47m".
   def remaining($now):
     finite
-    | if . == null or . <= $now then null
-      else (. - $now) as $s
+    | if . == null then null
+      elif . > 1000000000 then
+        (if . <= $now then null else (. - $now) end)
+      elif . <= 0 then null
+      else . end
+    | if . == null then null
+      else . as $s
       | if $s >= 86400 then "\($s / 86400 | floor)d\($s % 86400 / 3600 | floor)h"
         elif $s >= 3600 then "\($s / 3600 | floor)h\($s % 3600 / 60 | floor)m"
         else "\($s / 60 | floor)m" end
       end;
+
+  def get_pct:
+    if . == null then null
+    elif .used_percentage != null then (.used_percentage | pct)
+    elif .remaining_percentage != null then ((100 - .remaining_percentage + 0.00001) | pct)
+    elif .remaining_fraction != null then (((1 - .remaining_fraction) * 100 + 0.00001) | pct)
+    else null end;
 
   # "Now" comes from jq rather than bash: $EPOCHSECONDS needs bash 5, and stock
   # macOS ships 3.2, where the countdown would have silently never rendered. jq
@@ -130,6 +144,19 @@ jq_program='
   # no denominator and the whole context segment is omitted rather than shown
   # against a zero.
   | ($tok > 0 and $size > 0) as $ctx_ok
+  | (.model.display_name // .model.id // "") as $m
+  | ($m | test("gemini"; "i")) as $is_gemini
+  | (.rate_limits // .quota // {}) as $rl
+  | (if $is_gemini then
+       ($rl["gemini-5h"] // $rl.gemini_5h // $rl.five_hour // $rl["5h"] // $rl["3p-5h"] // {})
+     else
+       ($rl.five_hour // $rl["5h"] // $rl["3p-5h"] // $rl["3p_five_hour"] // $rl["gemini-5h"] // {})
+     end) as $five
+  | (if $is_gemini then
+       ($rl["gemini-weekly"] // $rl.gemini_weekly // $rl.weekly // $rl.seven_day // $rl["7d"] // $rl["3p-weekly"] // {})
+     else
+       ($rl.seven_day // $rl["7d"] // $rl.weekly // $rl["3p-weekly"] // $rl["3p_seven_day"] // $rl["gemini-weekly"] // {})
+     end) as $week
   | [
       (.workspace.current_dir // .cwd // ""),
       (.model.display_name // ""),
@@ -143,15 +170,21 @@ jq_program='
       (if $ctx_ok
        then ((.context_window.used_percentage | pct) // ($tok * 100 / $size)) | show
        else "" end),
-      (.rate_limits.five_hour.used_percentage | pct | show),
-      # Each window is independently optional, and so is its resets_at within a
-      # window that is present: a percentage with no timestamp renders alone.
-      (.rate_limits.five_hour.resets_at | remaining($n) // ""),
-      (.rate_limits.seven_day.used_percentage | pct | show),
-      (.rate_limits.seven_day.resets_at | remaining($n) // ""),
+      ($five | get_pct | show),
+      (($five.reset_in_seconds // $five.resets_at // $five.resets_in // $five.reset_time) | remaining($n) // ""),
+      ($week | get_pct | show),
+      (($week.reset_in_seconds // $week.resets_at // $week.resets_in // $week.reset_time) | remaining($n) // ""),
       (if $turn == null then "" else ($total - $turn.b | tostring) end),
       (if $turn == null then $state
-       else "\($total) \($turn.b) \($turn.a)" end)
+       else "\($total) \($turn.b) \($turn.a)" end),
+      (if $is_gemini then "5h"
+       elif $rl.five_hour != null or $rl["5h"] != null then "5h"
+       elif $rl["3p-5h"] != null then "3p-5h"
+       else "5h" end),
+      (if $is_gemini then (if $rl.seven_day != null or $rl["7d"] != null then "7d" else "weekly" end)
+       elif $rl.seven_day != null or $rl["7d"] != null then "7d"
+       elif $rl["3p-weekly"] != null then "3p-weekly"
+       else "7d" end)
     ]
   | .[]
 '
@@ -169,6 +202,8 @@ week_pct=""
 week_rem=""
 cmd_cost=""
 new_state=""
+five_label="5h"
+week_label="7d"
 
 # Without jq the bar degrades to directory and git info instead of vanishing.
 if command -v jq >/dev/null 2>&1; then
@@ -189,6 +224,8 @@ if command -v jq >/dev/null 2>&1; then
       11) week_rem=$value ;;
       12) cmd_cost=$value ;;
       13) new_state=$value ;;
+      14) five_label=$value ;;
+      15) week_label=$value ;;
     esac
   done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
 fi
@@ -261,16 +298,18 @@ week_rem_seg=""
 
 if [ -n "$five_pct" ]; then
   pct_colour "$five_pct"
+  lbl=${five_label:-5h}
   add_segment \
-    "  ${CYAN}5h${RESET} ${_colour}${five_pct}%${RESET}${five_rem_seg}" \
-    "  5h ${five_pct}%${five_rem_seg}"
+    "  ${CYAN}${lbl}${RESET} ${_colour}${five_pct}%${RESET}${five_rem_seg}" \
+    "  ${lbl} ${five_pct}%${five_rem_seg}"
 fi
 
 if [ -n "$week_pct" ]; then
   pct_colour "$week_pct"
+  lbl=${week_label:-7d}
   add_segment \
-    "  ${CYAN}7d${RESET} ${_colour}${week_pct}%${RESET}${week_rem_seg}" \
-    "  7d ${week_pct}%${week_rem_seg}"
+    "  ${CYAN}${lbl}${RESET} ${_colour}${week_pct}%${RESET}${week_rem_seg}" \
+    "  ${lbl} ${week_pct}%${week_rem_seg}"
 fi
 
 # `printf -v` rather than $(printf ...): command substitution forks a subshell

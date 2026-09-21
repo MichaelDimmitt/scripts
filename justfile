@@ -33,6 +33,10 @@ tell-installed-skills:
 tell-statusline:
     bash tell/tell_statusline.sh
 
+# Explain every segment of the Antigravity status line, one line each
+tell-statusline-antigravity:
+    bash tell/tell_statusline_antigravity.sh
+
 # Generate shell aliases for every installed Homebrew cask
 generate-cask-aliases:
     bash generate/generate_cask-aliases.sh
@@ -44,6 +48,10 @@ install-checkout-release:
 # Copy the status line to ~/.claude and repoint settings.json if it runs an older copy
 install-statusline:
     bash install/install_statusline.sh
+
+# Copy the status line to ~/.gemini/antigravity-cli and configure settings.json
+install-statusline-antigravity:
+    bash install/install_statusline_antigravity.sh
 
 # Install cl/cx/cresume/cresumef aliases and source them from your shell RC
 install-aliases:
@@ -64,3 +72,12 @@ check-install:
 # Run shellcheck over every script in the repo
 lint: check-conventions
     shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh resources/templates/*.sh
+
+# Run the Claude Code status line test suite
+test-statusline:
+    bash resources/extras/statusline-tests/run-tests.sh
+
+# Run the Antigravity status line test suite
+test-statusline-antigravity:
+    bash resources/extras/statusline-tests/run-antigravity-tests.sh
+

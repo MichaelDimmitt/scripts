@@ -25,9 +25,11 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_claude_skills.sh` | tell | Snapshot Claude Code skill and plugin locations |
 | `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor) |
 | `tell/tell_statusline.sh` | tell | Explain every segment of the status line, one line each |
+| `tell/tell_statusline_antigravity.sh` | tell | Explain every segment of the Antigravity status line, one line each |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude`, and repoint settings.json if it still runs an older copy |
+| `install/install_statusline_antigravity.sh` | install | Copy the status line to `~/.gemini/antigravity-cli`, and configure settings.json |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
 | `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
 | `check/check_install.sh` | check | Install into a throwaway `$HOME` and assert the aliases are live in a fresh shell |
@@ -53,14 +55,18 @@ just tell-skills
 just tell-claude-skills
 just tell-installed-skills
 just tell-statusline        # what each segment of the status line means
+just tell-statusline-antigravity # what each segment of the Antigravity status line means
 just generate-cask-aliases
 just install-checkout-release
 just install-statusline
+just install-statusline-antigravity
 just install-aliases
 just install-all            # every install-* script in one pass
 just check-conventions      # installer contract, shebangs, exec bits
 just lint                   # check-conventions, then shellcheck every script
 just check-install          # end-to-end: install to a throwaway HOME, assert aliases are live
+just test-statusline        # run Claude Code status line test suite
+just test-statusline-antigravity # run Antigravity status line test suite
 ```
 
 ### Continuous integration
@@ -115,7 +121,9 @@ Hand-maintained additions that layer on top of generated output.
 | [context-monitor-setup.md](./resources/extras/context-monitor-setup.md) | Setup guide for the context monitor hook — thresholds, tuning, and how to test it |
 | [statusline-command.sh](./resources/extras/statusline-command.sh) | Claude Code status line script that mirrors a bash PS1 (cwd, short SHA, branch in cyan) and adds model, context window usage, and rate-limit percentages |
 | [statusline-setup.md](./resources/extras/statusline-setup.md) | Setup guide for the status line — includes a no-clone install path using `curl` |
-| [statusline-tests/](./resources/extras/statusline-tests) | Fixture-driven test suite for the status line script (`./run-tests.sh`) |
+| [statusline-antigravity.sh](./resources/extras/statusline-antigravity.sh) | Google Antigravity / Gemini CLI (`agy`) status line script (cwd, git branch, model, effort, ctx tokens, subagents, total USD) |
+| [statusline-antigravity-setup.md](./resources/extras/statusline-antigravity-setup.md) | Setup guide for the Antigravity status line — includes standalone curl and settings.json instructions |
+| [statusline-tests/](./resources/extras/statusline-tests) | Fixture-driven test suite for the status line scripts |
 | [stashes.sh](./resources/extras/stashes.sh) | Shell functions `dump_stashes` and `dump_stashes_files` for exporting a range of git stashes to a text file |
 | [text-manipulation.sh](./resources/extras/text-manipulation.sh) | Shell utility functions for common text transformations |
 
@@ -257,9 +265,42 @@ This script reads only the official stdin payload, forks two processes (`jq` and
 `git`), and degrades every field independently rather than failing the whole bar.
 The per-command cost segment is the one feature none of the popular ones have:
 the payload carries only a cumulative total, so this-command cost has to be
-inferred from turn boundaries.
-
 Outstanding work, and how to pick it up, is tracked in [ROADMAP.md](./ROADMAP.md).
+
+### Antigravity CLI status line
+
+See [statusline-antigravity-setup.md](./resources/extras/statusline-antigravity-setup.md) for the full setup guide, including a no-clone install path using `curl`.
+
+To install or update it:
+
+```sh
+just install-statusline-antigravity
+```
+
+That copies the script to `~/.gemini/antigravity-cli/statusline-antigravity.sh`, sets the executable bit, and configures `~/.gemini/antigravity-cli/settings.json` with:
+
+```json
+{
+  "statusLine": {
+    "command": "bash ~/.gemini/antigravity-cli/statusline-antigravity.sh",
+    "stack_with_default": true
+  }
+}
+```
+
+Antigravity CLI status line layout:
+
+```
+dir: ~/scripts  (feat/antigravity-statusline*)  model: Gemini 3.8 Flash (high)  ctx 16k/1049k (1%)  weekly 6% (6d11h)  [2 agents]  +$0.02  $0.05 (sub:$0.02)
+```
+
+Antigravity tracks metrics specific to `agy`:
+- **Subagents**: Displays active/running background subagent count (e.g. `[2 agents]`).
+- **Git VCS**: Directly reads `.vcs.branch` and `.vcs.dirty` without extra subshells, falling back to local `git` when omitted.
+- **Model Effort**: Reads `.model.effort` alongside `.model.display_name`.
+- **Token Context**: Formatted as `ctx <used>k/<size>k (<pct>%)` with color-coded thresholds.
+- **Model Quota**: Displays weekly model quota usage and reset countdown (e.g. `weekly 6% (6d11h)` via `.quota`).
+- **Cost**: Total USD session spend with optional subagent cost breakdown and per-command cost delta (`+$X.XX`).
 
 ### Claude Code context monitor
 
