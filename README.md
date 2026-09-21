@@ -23,13 +23,14 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `tell/tell_rcs.sh` | tell | Report shell RC files |
 | `tell/tell_skills.sh` | tell | Report cloned skill repos under ~/skills |
 | `tell/tell_claude_skills.sh` | tell | Snapshot Claude Code skill and plugin locations |
-| `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor) |
+| `tell/tell_installed_skills.sh` | tell | List every installed SKILL.md skill (Claude + Cursor + Antigravity) |
 | `tell/tell_statusline.sh` | tell | Explain every segment of the status line, one line each |
 | `tell/tell_statusline_antigravity.sh` | tell | Explain every segment of the Antigravity status line, one line each |
 | `generate/generate_cask-aliases.sh` | generate | Create shell aliases for casks |
 | `install/install_checkout_release.sh` | install | Wire up latest_release without running the full generate script |
 | `install/install_statusline.sh` | install | Copy the status line to `~/.claude`, and repoint settings.json if it still runs an older copy |
 | `install/install_statusline_antigravity.sh` | install | Copy the status line to `~/.gemini/antigravity-cli`, and configure settings.json |
+| `install/install_prompt_skill.sh` | install | Install the cross-platform /prompt skill to Claude Code and Antigravity CLI |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
 | `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
 | `check/check_install.sh` | check | Install into a throwaway `$HOME` and assert the aliases are live in a fresh shell |
@@ -60,6 +61,7 @@ just generate-cask-aliases
 just install-checkout-release
 just install-statusline
 just install-statusline-antigravity
+just install-prompt-skill
 just install-aliases
 just install-all            # every install-* script in one pass
 just check-conventions      # installer contract, shebangs, exec bits
@@ -302,6 +304,27 @@ Antigravity tracks metrics specific to `agy`:
 - **Model Quota**: Displays weekly model quota usage and reset countdown (e.g. `weekly 6% (6d11h)` via `.quota`).
 - **Cost**: Total USD session spend with optional subagent cost breakdown and per-command cost delta (`+$X.XX`).
 
+### `/prompt` agent handoff skill
+
+A cross-platform skill for **Claude Code** and **Antigravity CLI (`agy`)** that formulates structured handoff prompt files (`AGENT_PROMPT_<TASK_NAME>.txt`) in the project root with a mandatory self-cleanup directive.
+
+To install or update it across all supported environments:
+
+```sh
+just install-prompt-skill
+```
+
+Copies `resources/extras/skills/prompt/SKILL.md` to:
+- Claude Code: `~/.claude/skills/prompt/SKILL.md`
+- Antigravity CLI: `~/.gemini/antigravity-cli/skills/prompt/SKILL.md`
+- Antigravity Config: `~/.gemini/config/skills/prompt/SKILL.md`
+
+**Trigger inside Claude Code or Antigravity CLI:**
+```sh
+/prompt <task description>
+```
+If invoked with empty arguments, the skill interactively prompts for task details, target files, and objectives before generating the handoff file.
+
 ### Claude Code context monitor
 
 A `Stop` hook that warns you as a session approaches autocompact, so you can
@@ -402,6 +425,15 @@ Minimal installer that wires up `latest_release` without running the full `gener
 ```sh
 bash install/install_checkout_release.sh
 source ~/.zshrc      # or ~/.bashrc under bash — the installer tells you which
+```
+
+---
+
+### `install/install_prompt_skill.sh`
+Idempotent installer that installs or updates the `/prompt` skill definition across Claude Code and Antigravity CLI. Automatically manages target directories, creates `.bak` backups before modifying any existing differing files, and integrates with the shared `next_steps.sh` reporting protocol.
+
+```sh
+bash install/install_prompt_skill.sh
 ```
 
 ---

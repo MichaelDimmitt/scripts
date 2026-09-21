@@ -59,4 +59,12 @@ if [ ${#cursor_project_skills[@]} -gt 0 ]; then
   printf '   %s\n' "${cursor_project_skills[@]}" | sort -u
 fi
 
+# 6. Antigravity global skills
+agy_paths=()
+[ -d "$HOME/.gemini/antigravity-cli/skills" ] && agy_paths+=("$HOME/.gemini/antigravity-cli/skills")
+[ -d "$HOME/.gemini/config/skills" ] && agy_paths+=("$HOME/.gemini/config/skills")
+if [ ${#agy_paths[@]} -gt 0 ]; then
+  print_skills "Antigravity global (~/.gemini/.../skills)" "${agy_paths[@]}"
+fi
+
 echo ""
