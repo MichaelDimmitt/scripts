@@ -72,3 +72,12 @@ check-install:
 # Run shellcheck over every script in the repo
 lint: check-conventions
     shellcheck -x bin/latest_release install/*.sh tell/*.sh generate/*.sh check/*.sh resources/lib/*.sh resources/templates/*.sh
+
+# Run the Claude Code status line test suite
+test-statusline:
+    bash resources/extras/statusline-tests/run-tests.sh
+
+# Run the Antigravity status line test suite
+test-statusline-antigravity:
+    bash resources/extras/statusline-tests/run-antigravity-tests.sh
+

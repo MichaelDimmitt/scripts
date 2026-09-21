@@ -2,7 +2,7 @@
 # Google Antigravity / Gemini CLI (`agy`) status line.
 #
 # Renders: directory, git branch/sha, model, context-window usage,
-# active subagents count, and total session cost (with subagent cost when non-zero).
+# model quota / rate limits, active subagents count, and total session cost (with subagent cost when non-zero).
 # Reads the session JSON that agy pipes on stdin.
 #
 # No `set -e`/`set -u` on purpose: a status line that aborts prints nothing,
@@ -47,9 +47,10 @@ fi
 # when a new update arrives, so a script that forks a process per field
 # risks being killed before it prints.
 #
-# Contract: 15 lines, in order, empty when unavailable:
+# Contract: 18 lines, in order, empty when unavailable:
 #   cwd, vcs_branch, vcs_dirty, vcs_sha, model, effort,
-#   ctx_used_k, ctx_size_k, ctx_pct, agent_count, cost, cmd_cost, subagent_cost, terminal_width, new_state
+#   ctx_used_k, ctx_size_k, ctx_pct, quota_label, quota_pct, quota_rem,
+#   agent_count, cost, cmd_cost, subagent_cost, terminal_width, new_state
 # shellcheck disable=SC2016
 jq_program='
   def finite:
@@ -65,6 +66,31 @@ jq_program='
 
   # Floor, never round: 99.6% must not display as a limit-reached 100%.
   def show: if . == null then "" else (floor | tostring) end;
+
+  def fmt_sec:
+    if type == "number" and . > 0 then
+      if . >= 86400 then "\(./ 86400 | floor)d\(. % 86400 / 3600 | floor)h"
+      elif . >= 3600 then "\(./ 3600 | floor)h\(. % 3600 / 60 | floor)m"
+      else "\(./ 60 | floor)m" end
+    else null end;
+
+  # Quota extraction: find first bucket or direct quota object
+  def extract_quota:
+    if (.quota | type) == "object" then
+      if .quota.remaining_fraction != null or .quota.used_percentage != null then
+        {name: "quota", val: .quota}
+      else
+        (.quota | to_entries | map(select(.value | type == "object")) | first // null) as $first
+        | if $first != null then
+            {
+              name: (if ($first.key | test("weekly"; "i")) then "weekly"
+                     elif ($first.key | test("daily"; "i")) then "daily"
+                     else ($first.key | sub("^(gemini|google|agy)[-_]"; "")) end),
+              val: $first.value
+            }
+          else null end
+      end
+    else null end;
 
   # Active subagents: count running/active or non-terminated agents
   def active_subagents:
@@ -108,7 +134,19 @@ jq_program='
      elif $total_cost != null and ($total_cost - $cost_turn.b) > 0.005 then ($total_cost - $cost_turn.b | tostring)
      else "" end) as $cmd_cost
   | (if $total_cost == null and $tok == 0 then $state
-     else "\($total_cost // 0) \($cost_turn.b // 0) \($cost_turn.a // 0) \($tok)" end) as $new_state
+     else "\($total_cost // "null") \($cost_turn.b // "null") \($cost_turn.a // 0) \($tok)" end) as $new_state
+  | (. | extract_quota) as $q
+  | (if $q != null then
+       (if $q.val.used_percentage != null then ($q.val.used_percentage | pct)
+        elif $q.val.remaining_fraction != null then (((1 - $q.val.remaining_fraction) * 100) | pct)
+        else null end | if . != null then (floor | tostring) else "" end)
+     else "" end) as $quota_pct
+  | (if $q != null and $quota_pct != "" then
+       ($q.name // "quota")
+     else "" end) as $quota_label
+  | (if $q != null and $quota_pct != "" then
+       ($q.val.reset_in_seconds | fmt_sec // "")
+     else "" end) as $quota_rem
   | [
       (.workspace.current_dir // .cwd // ""),
       (.vcs.branch // ""),
@@ -121,6 +159,9 @@ jq_program='
       (if $ctx_ok
        then (((.context.used_percentage // .context_window.used_percentage) | pct) // ($tok * 100 / $size)) | show
        else "" end),
+      $quota_label,
+      $quota_pct,
+      $quota_rem,
       (active_subagents | if . > 0 then tostring else "" end),
       (if $total_cost == null then "" else ($total_cost | tostring) end),
       $cmd_cost,
@@ -140,6 +181,9 @@ effort=""
 ctx_used_k=""
 ctx_size_k=""
 ctx_pct=""
+quota_label=""
+quota_pct=""
+quota_rem=""
 agent_count=""
 cost=""
 cmd_cost=""
@@ -162,12 +206,15 @@ if command -v jq >/dev/null 2>&1; then
       7) ctx_used_k=$value ;;
       8) ctx_size_k=$value ;;
       9) ctx_pct=$value ;;
-      10) agent_count=$value ;;
-      11) cost=$value ;;
-      12) cmd_cost=$value ;;
-      13) subagent_cost=$value ;;
-      14) json_cols=$value ;;
-      15) new_state=$value ;;
+      10) quota_label=$value ;;
+      11) quota_pct=$value ;;
+      12) quota_rem=$value ;;
+      13) agent_count=$value ;;
+      14) cost=$value ;;
+      15) cmd_cost=$value ;;
+      16) subagent_cost=$value ;;
+      17) json_cols=$value ;;
+      18) new_state=$value ;;
     esac
   done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
 fi
@@ -245,6 +292,21 @@ if [ -n "$ctx_pct" ]; then
   add_segment \
     "  ${CYAN}ctx${RESET} ${ctx_used_k}k/${ctx_size_k}k (${_colour}${ctx_pct}%${RESET})" \
     "  ctx ${ctx_used_k}k/${ctx_size_k}k (${ctx_pct}%)"
+fi
+
+# Model quota / Rate limit usage
+if [ -n "$quota_pct" ]; then
+  pct_colour "$quota_pct"
+  quota_rem_seg=""
+  quota_rem_plain=""
+  if [ -n "$quota_rem" ]; then
+    quota_rem_seg=" (${quota_rem})"
+    quota_rem_plain=" (${quota_rem})"
+  fi
+  quota_name=${quota_label:-quota}
+  add_segment \
+    "  ${CYAN}${quota_name}${RESET} ${_colour}${quota_pct}%${RESET}${quota_rem_seg}" \
+    "  ${quota_name} ${quota_pct}%${quota_rem_plain}"
 fi
 
 # Subagents: active/running count

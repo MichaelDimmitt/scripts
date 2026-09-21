@@ -84,6 +84,9 @@ payload_full='{
   "vcs": {"branch": "feat/agy", "dirty": false},
   "model": {"display_name": "Gemini 3.8 Flash", "effort": "high"},
   "context": {"input_tokens": 16384, "total_tokens": 1048576},
+  "quota": {
+    "gemini-weekly": {"remaining_fraction": 0.9378, "reset_in_seconds": 560580}
+  },
   "cost": {"total_usd": 0.045, "subagent_usd": 0.012},
   "subagents": [
     {"role": "researcher", "agent_state": "running"},
@@ -98,6 +101,8 @@ want "shows model"            "$out" "model: Gemini 3.8 Flash"
 want "shows effort"           "$out" "(high)"
 want "shows context tokens"   "$out" "ctx 16k/1049k"
 want "shows context percent"  "$out" "(1%)"
+want "shows weekly quota"     "$out" "weekly 6%"
+want "shows quota countdown"  "$out" "(6d11h)"
 want "shows 2 subagents"      "$out" "[2 agents]"
 want "shows total cost"       "$out" "\$0.04"
 want "shows subagent cost"    "$out" "(sub:\$0.01)"
@@ -225,6 +230,30 @@ out3=$(render_json "$turn_new_conv")
 case_header "session reset on new conversation (/clear)" "$out3"
 want "new session resets context" "$out3" "ctx 1k/1049k"
 dont "does not carry over 4k"     "$out3" "ctx 4k/1049k"
+
+# 14. Quota with explicit used_percentage and short countdown
+payload_quota_used='{
+  "workspace": {"current_dir": "/Users/test/project"},
+  "model": {"display_name": "Gemini 3.8 Flash"},
+  "quota": {
+    "weekly": {"used_percentage": 25, "reset_in_seconds": 7200}
+  }
+}'
+out=$(render_json "$payload_quota_used")
+case_header "quota with used_percentage and hours countdown" "$out"
+want "shows weekly 25%"       "$out" "weekly 25%"
+want "shows 2h countdown"     "$out" "(2h0m)"
+
+# 15. Quota absent or empty (omits segment)
+payload_no_quota='{
+  "workspace": {"current_dir": "/Users/test/project"},
+  "model": {"display_name": "Gemini 3.8 Flash"},
+  "quota": {}
+}'
+out=$(render_json "$payload_no_quota")
+case_header "empty quota" "$out"
+dont "omits quota segment"    "$out" "weekly"
+dont "omits generic quota"    "$out" "quota"
 
 printf '\nstatusline-antigravity.sh: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1

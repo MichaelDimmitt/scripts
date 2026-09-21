@@ -12,7 +12,7 @@
 ## What it shows
 
 ```
-dir: ~/scripts  (feat/antigravity-statusline*)  model: Gemini 3.8 Flash (high)  ctx 16k/1049k (1%)  [2 agents]  +$0.02  $0.05 (sub:$0.02)
+dir: ~/scripts  (feat/antigravity-statusline*)  model: Gemini 3.8 Flash (high)  ctx 16k/1049k (1%)  weekly 6% (6d11h)  [2 agents]  +$0.02  $0.05 (sub:$0.02)
 ```
 
 | Segment | Source | Notes |
@@ -21,6 +21,7 @@ dir: ~/scripts  (feat/antigravity-statusline*)  model: Gemini 3.8 Flash (high)  
 | `(branch)` | `.vcs.branch`, `.vcs.dirty` | `*` suffix when dirty; falls back to commit SHA + branch via local git; `(no git)` outside a repo |
 | `model:` | `.model.display_name` | model name, with effort level in parentheses when available (e.g. `high`, `medium`, `low`) |
 | `ctx` | `.context.input_tokens` / `.context.total_tokens` | token usage out of total context window, plus usage percentage; accumulated across turns (resets on `/clear`) |
+| `weekly` | `.quota` / `/usage` | percentage of model quota used so far with time until reset; omitted when quota not reported |
 | `[agents]` | `.subagents` | count of active / running background subagents; omitted when zero |
 | `+$` | derived | what the command you just ran cost; hidden below a cent |
 | `$` | `.cost.total_usd` | total session cost, with optional `(sub:$...)` subagent cost breakdown; omitted when $0.00 |
@@ -98,6 +99,23 @@ Available slash command options:
 
 ## Testing
 
+### Automated Test Suite
+
+Run the full assertion suite:
+
+```sh
+# Test the repository copy
+bash resources/extras/statusline-tests/run-antigravity-tests.sh
+
+# Or via just
+just test-statusline-antigravity
+
+# Test an installed standalone copy
+bash resources/extras/statusline-tests/run-antigravity-tests.sh ~/.gemini/antigravity-cli/statusline-antigravity.sh
+```
+
+### Manual Sample Testing
+
 You can test the status line directly by feeding sample JSON on stdin:
 
 ```sh
@@ -106,6 +124,7 @@ jq -n '{
   vcs: {branch: "main", dirty: false},
   model: {display_name: "Gemini 3.8 Flash", effort: "high"},
   context: {input_tokens: 15000, total_tokens: 1000000},
+  quota: {"gemini-weekly": {"remaining_fraction": 0.94, "reset_in_seconds": 560000}},
   cost: {total_usd: 0.04, subagent_usd: 0.01},
   subagents: [{role: "researcher", agent_state: "running"}]
 }' | ~/.gemini/antigravity-cli/statusline-antigravity.sh

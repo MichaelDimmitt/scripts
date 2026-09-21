@@ -65,6 +65,8 @@ just install-all            # every install-* script in one pass
 just check-conventions      # installer contract, shebangs, exec bits
 just lint                   # check-conventions, then shellcheck every script
 just check-install          # end-to-end: install to a throwaway HOME, assert aliases are live
+just test-statusline        # run Claude Code status line test suite
+just test-statusline-antigravity # run Antigravity status line test suite
 ```
 
 ### Continuous integration
@@ -286,12 +288,19 @@ That copies the script to `~/.gemini/antigravity-cli/statusline-antigravity.sh`,
 }
 ```
 
+Antigravity CLI status line layout:
+
+```
+dir: ~/scripts  (feat/antigravity-statusline*)  model: Gemini 3.8 Flash (high)  ctx 16k/1049k (1%)  weekly 6% (6d11h)  [2 agents]  +$0.02  $0.05 (sub:$0.02)
+```
+
 Antigravity tracks metrics specific to `agy`:
 - **Subagents**: Displays active/running background subagent count (e.g. `[2 agents]`).
 - **Git VCS**: Directly reads `.vcs.branch` and `.vcs.dirty` without extra subshells, falling back to local `git` when omitted.
 - **Model Effort**: Reads `.model.effort` alongside `.model.display_name`.
 - **Token Context**: Formatted as `ctx <used>k/<size>k (<pct>%)` with color-coded thresholds.
-- **Cost**: Total USD session spend with optional subagent cost breakdown.
+- **Model Quota**: Displays weekly model quota usage and reset countdown (e.g. `weekly 6% (6d11h)` via `.quota`).
+- **Cost**: Total USD session spend with optional subagent cost breakdown and per-command cost delta (`+$X.XX`).
 
 ### Claude Code context monitor
 
