@@ -129,6 +129,16 @@ Violating one silently is worse than not doing the step.
   "We changed your file after you did" is worse than leaving an orphan.
 - **Uninstall is dry-run by default.** `--apply` acts.
 
+### When the step does not go as written
+
+- **A design decision this document left open** — stop and ask. Do not invent
+  one. [§1](#1-work-out-which-step-is-next) names the two blockers known today;
+  one that surfaces mid-step gets the same treatment.
+- **A step bigger than its stated effort** — finish it if it is genuinely one
+  step; split it and ask if it is really two. Area 3's D+E+F is the likeliest to
+  want splitting, and **D and F must not be separated**: an uninstaller without
+  its round-trip test is the dangerous version.
+
 ## 4. Verify — all of these, every time
 
 ```sh
@@ -182,11 +192,14 @@ updated in a later commit is a plan that was wrong in between.
    you added, split, or dropped a step, change the rows. Then move the item's
    design into [Done](#done) as a single line — that compression is what keeps
    this document about the work that remains.
-2. **Any claim your step proved wrong.** Not just field names: sketches that did
-   not survive contact with the code, effort estimates off by more than a factor
-   of two, edge cases that turned out impossible or turned out to be the only
-   case. Correct the text in place and say so in the commit body. This document
-   has been wrong before — see [Corrections](#corrections).
+2. **Any claim your step proved wrong** — the twelve-artifact inventory above
+   all, since a thirteenth artifact, or one of the twelve no longer being
+   written, is a row uninstall would get wrong. Not just field names either:
+   sketches that did not survive contact with the code, effort estimates off by
+   more than a factor of two, edge cases that turned out impossible or turned
+   out to be the only case. Correct the text in place and say so in the commit
+   body. This document has been wrong before — see
+   [Corrections](#corrections).
 3. **Decisions the step resolved.** If [Open decisions](#open-decisions) had it
    and you settled it, write down what you chose and why, then remove it from
    that list. The next session has no memory and will otherwise re-litigate it,
@@ -209,6 +222,14 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 ```
 
 Commit only — **do not push and do not open a PR** unless asked.
+
+**One PR per user-visible feature**, when one is opened. That is what this repo
+does: PRs #3, #4 and #5 each landed a single status-line feature with its script
+change, its fixtures and its tests as one reviewable unit, while scaffolding and
+docs went in direct with no PR number. So steps do not map one-to-one onto PRs —
+a helper whose only caller is its own self-check gives a reviewer nothing to
+weigh, and travels with the feature that uses it. That is the argument behind
+step 5's "merge it without squashing".
 
 **Expect a squash merge.** It replaces the sha you committed under, so a sha
 written into this document is correct only until it lands. `plan2.md` carried a
@@ -348,7 +369,8 @@ last-line and last-main-line agreed exactly. A session ending a turn with subage
 activity would not agree.
 
 **Fix.** One condition in the line filter — skip lines where `isSidechain` is
-true. Independent of any threshold question: this is about reading the right
+true. Independent of the threshold question, which is settled under
+[Explicitly not doing](#explicitly-not-doing): this is about reading the right
 number at all, not about where the bar sits.
 
 **Effort:** ~10 min.
@@ -467,6 +489,11 @@ uninstaller does.
 detection block that exists only because someone remembered to write it. That
 does not scale, and a missed one is invisible forever.
 
+**This inventory was compiled by grepping the installers.** Treat it as a
+good-faith list, not a guarantee, and re-derive it if your step depends on it
+being complete. It is what uninstall is built against, so a wrong row here
+becomes a file left behind.
+
 ## A — The install log
 
 An append-only TSV in `resources/lib/install_log.sh`
@@ -474,9 +501,13 @@ An append-only TSV in `resources/lib/install_log.sh`
 machine. Six columns: **timestamp · installer · kind · path · hash · repo sha**.
 
 ```
-2026-09-08T14:22:07Z  install_statusline  file  /Users/me/.claude/statusline-command.sh  sha256:9f3c2a1b4d5e  fefa2ce
+2026-09-08T14:22:07Z  install_statusline  file  /Users/me/.claude/statusline-command.sh   sha256:9f3c2a1b4d5e  fefa2ce
 2026-09-08T14:22:07Z  install_aliases     line  /Users/me/.zshrc                          sha256:1a2b3c4d5e6f  4ffa324
+2026-09-08T14:22:08Z  install_checkout    key   ~/.gitconfig#alias.checkout-release       sha256:7e8f9a0b1c2d  4ffa324
 ```
+
+The third row shows how a `key` addresses itself: the file, `#`, then the key
+inside it. Nothing else in the row could say which key to unset.
 
 Four `kind`s, because removal differs per kind and nothing else in the row tells
 you how to undo it:
@@ -502,6 +533,10 @@ Append-only inverts it. v1's line survives, so uninstall finds both paths withou
 anyone having remembered anything. **Future ghosts become self-recording** — the
 single most valuable property here, and it costs one design decision rather than
 one `if` block per ghost forever.
+
+Readers get both views: `log_path` for the current state of a path, last entry
+wins; `log_history` for everything ever written, which is what uninstall reads
+and the only view that sees the ghosts.
 
 ### The hash is not optional either
 
@@ -578,8 +613,9 @@ a row for it. Dry-run by default, `--apply` to act.
 
 Rules: never delete a file we do not own; never delete a containing directory;
 hash-gate every removal; read the **full history**, not the current state, since
-that is what collects the ghosts; remove the log last. See
-[§3 constraints](#3-constraints-that-are-not-negotiable).
+that is what collects the ghosts; remove the log last, and its state directory
+with it — owning that directory outright is why the recommended location beats a
+dotfile. See [§3 constraints](#3-constraints-that-are-not-negotiable).
 
 **One generic uninstaller, not one per installer.** Mirroring `install/` would
 re-create exactly the per-installer, hand-maintained knowledge the log exists to
@@ -605,6 +641,9 @@ In `check_install.sh`: **install into a throwaway `$HOME`, uninstall, assert
 commit. It validates A transitively — a missing log entry shows up as a leftover
 diff — and D directly. Three cases: the round trip; uninstall on a virgin `$HOME`
 is a no-op; uninstall with a drifted file leaves it and reports.
+
+**Most of the harness is already written** — `TMPROOT`, `make_home` and
+`run_install` in `check_install.sh`.
 
 Honest limit: byte-identical proves we removed what we added, not that we added
 everything we should have. Only B proves that.
@@ -686,6 +725,18 @@ on any living machine.
 - **Git dirty indicator** — the most-requested missing field, but the only
   candidate that breaks the one-`git`-process discipline. Worth deciding on its
   own merits, not bundled in behind changes that cost nothing.
+
+**Context monitor:**
+
+- **Hardening the thresholds.** `MAX_TOKENS=200000` is inferred and
+  `AUTOCOMPACT_AT=167000` is a guess — the transcript names the model but carries
+  no window size. **Leave them.** The cost of the guess being wrong is a desktop
+  notification firing early or late, and the status line already shows `ctx`
+  continuously with colour coding: the better instrument, always on screen.
+  A confidence gate would engineer a precision the tool does not need.
+  **Revisit if** you start treating "it has not warned me yet" as permission to
+  begin something long — the number is load-bearing at that point and needs a bar
+  under it.
 
 **Install log and uninstall:**
 
