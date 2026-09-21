@@ -17,8 +17,9 @@ segments=(
   "dir:the directory this session is working in, shortened to ~ or ... when the bar runs out of room"
   "(branch):the git branch you are on, marked with * when dirty (or commit sha + branch fallback)"
   "model:the model answering you, with its effort level in brackets when it has one"
-  "ctx:tokens used out of the context window, and that as a percentage"
+  "ctx:tokens used out of the context window, and that as a percentage (accumulated across turns)"
   "[agents]:count of active background subagents currently running"
+  "+\$:what the command you just ran cost (delta since last turn)"
   "\$:what this session has cost in total, with subagent cost in brackets when non-zero"
 )
 

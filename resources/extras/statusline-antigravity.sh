@@ -25,14 +25,31 @@ YELLOW=$'\033[33m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
 
+# --- Session state & turn tracking ------------------------------------------
+# State lives in TMPDIR so the OS reaps it; each session/conversation keeps its
+# own file. A cleared chat (/clear or new conversation_id) resets to zero.
+state_dir=${AGY_STATUSLINE_STATE_DIR:-${TMPDIR:-/tmp}/agy-statusline}
+state=""
+state_file=""
+
+session_id=""
+session_re='"(conversation_id|session_id)"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
+if [[ $input =~ $session_re ]]; then
+  session_id=${BASH_REMATCH[2]}
+fi
+if [ -n "$session_id" ]; then
+  state_file=$state_dir/$session_id
+  [ -r "$state_file" ] && IFS= read -r state < "$state_file"
+fi
+
 # --- Parse ------------------------------------------------------------------
 # One jq invocation for every field. agy cancels an in-flight status line
 # when a new update arrives, so a script that forks a process per field
 # risks being killed before it prints.
 #
-# Contract: 13 lines, in order, empty when unavailable:
+# Contract: 15 lines, in order, empty when unavailable:
 #   cwd, vcs_branch, vcs_dirty, vcs_sha, model, effort,
-#   ctx_used_k, ctx_size_k, ctx_pct, agent_count, cost, subagent_cost, terminal_width
+#   ctx_used_k, ctx_size_k, ctx_pct, agent_count, cost, cmd_cost, subagent_cost, terminal_width, new_state
 # shellcheck disable=SC2016
 jq_program='
   def finite:
@@ -65,9 +82,33 @@ jq_program='
       .subagents
     else 0 end;
 
-  ((.context.input_tokens // .context_window.current_usage.input_tokens // 0) | finite // 0) as $tok
+  # The previous render left "total_cost base_cost active_flag accumulated_tokens"
+  ($state | split(" ")) as $s
+  | ($s[0] | tonumber? // null) as $prev_cost
+  | ($s[1] | tonumber? // 0) as $base_cost
+  | ($s[2] | tonumber? // 0) as $act_cost
+  | ($s[3] | tonumber? // 0) as $prev_tok
+  | ((.cost.total_usd // .cost.total_cost_usd) | finite) as $total_cost
+  | (if $total_cost == null then null
+     elif $prev_cost == null or $total_cost < $prev_cost then {b: $total_cost, a: 0}
+     elif $total_cost > $prev_cost then {b: (if $act_cost == 1 then $base_cost else $prev_cost end), a: 1}
+     else {b: $base_cost, a: 0} end) as $cost_turn
+
+  | ((.context.total_input_tokens // .context_window.total_input_tokens) | finite) as $reported_total_tok
+  | ((.context.input_tokens // .context_window.current_usage.input_tokens // 0) | finite // 0) as $raw_tok
+  # Accumulated tokens: if explicit total tokens is reported, use it.
+  # Otherwise, keep the high-water mark so intermediate tool steps (e.g. 4k -> 3k)
+  # do not artificially drop the conversation context display.
+  | (if $reported_total_tok != null and $reported_total_tok > 0 then $reported_total_tok
+     elif $raw_tok > $prev_tok then $raw_tok
+     else $prev_tok end) as $tok
   | ((.context.total_tokens // .context.context_window_size // .context_window.context_window_size // 0) | finite // 0) as $size
   | ($tok > 0 and $size > 0) as $ctx_ok
+  | (if $cost_turn == null then ""
+     elif $total_cost != null and ($total_cost - $cost_turn.b) > 0.005 then ($total_cost - $cost_turn.b | tostring)
+     else "" end) as $cmd_cost
+  | (if $total_cost == null and $tok == 0 then $state
+     else "\($total_cost // 0) \($cost_turn.b // 0) \($cost_turn.a // 0) \($tok)" end) as $new_state
   | [
       (.workspace.current_dir // .cwd // ""),
       (.vcs.branch // ""),
@@ -81,9 +122,11 @@ jq_program='
        then (((.context.used_percentage // .context_window.used_percentage) | pct) // ($tok * 100 / $size)) | show
        else "" end),
       (active_subagents | if . > 0 then tostring else "" end),
-      (.cost.total_usd // .cost.total_cost_usd | finite | if . == null then "" else tostring end),
+      (if $total_cost == null then "" else ($total_cost | tostring) end),
+      $cmd_cost,
       (.cost.subagent_usd | finite | if . == null then "" else tostring end),
-      (.terminal_width | finite | if . == null then "" else tostring end)
+      (.terminal_width | finite | if . == null then "" else tostring end),
+      $new_state
     ]
   | .[]
 '
@@ -99,8 +142,10 @@ ctx_size_k=""
 ctx_pct=""
 agent_count=""
 cost=""
+cmd_cost=""
 subagent_cost=""
 json_cols=""
+new_state=""
 
 # Without jq the bar degrades to directory and git info instead of vanishing.
 if command -v jq >/dev/null 2>&1; then
@@ -119,10 +164,19 @@ if command -v jq >/dev/null 2>&1; then
       9) ctx_pct=$value ;;
       10) agent_count=$value ;;
       11) cost=$value ;;
-      12) subagent_cost=$value ;;
-      13) json_cols=$value ;;
+      12) cmd_cost=$value ;;
+      13) subagent_cost=$value ;;
+      14) json_cols=$value ;;
+      15) new_state=$value ;;
     esac
-  done < <(printf '%s' "$input" | jq -r "$jq_program" 2>/dev/null)
+  done < <(printf '%s' "$input" | jq -r --arg state "$state" "$jq_program" 2>/dev/null)
+fi
+
+# Persist turn state before rendering so interrupted updates advance baseline
+if [ -n "$state_file" ] && [ -n "$new_state" ]; then
+  if [ -d "$state_dir" ] || mkdir -p "$state_dir" 2>/dev/null; then
+    printf '%s\n' "$new_state" > "$state_file" 2>/dev/null
+  fi
 fi
 
 [ -z "$cwd" ] && cwd=$(pwd)
@@ -209,6 +263,16 @@ if [ -n "$cost" ]; then
   cost_fmt=""
   printf -v cost_fmt '%.2f' "$cost" 2>/dev/null
   if [ -n "$cost_fmt" ] && [ "$cost_fmt" != "0.00" ]; then
+    cmd_seg=""
+    cmd_plain=""
+    if [ -n "$cmd_cost" ]; then
+      cmd_fmt=""
+      printf -v cmd_fmt '%.2f' "$cmd_cost" 2>/dev/null
+      if [ -n "$cmd_fmt" ] && [ "$cmd_fmt" != "0.00" ]; then
+        cmd_seg="  ${CYAN}+\$${RESET}${cmd_fmt}"
+        cmd_plain="  +\$${cmd_fmt}"
+      fi
+    fi
     sub_seg=""
     sub_plain=""
     if [ -n "$subagent_cost" ]; then
@@ -219,7 +283,7 @@ if [ -n "$cost" ]; then
         sub_plain=" (sub:\$${sub_fmt})"
       fi
     fi
-    add_segment "  ${CYAN}\$${RESET}${cost_fmt}${sub_seg}" "  \$${cost_fmt}${sub_plain}"
+    add_segment "${cmd_seg}  ${CYAN}\$${RESET}${cost_fmt}${sub_seg}" "${cmd_plain}  \$${cost_fmt}${sub_plain}"
   fi
 fi
 

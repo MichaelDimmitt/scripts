@@ -205,5 +205,27 @@ case_header "jq unavailable" "$out"
 want "still shows dir"        "$out" "dir:"
 if [ -n "$out" ]; then ok "produces output"; else no "produces output" "$out"; fi
 
+# 12. Session state: context accumulation across tool calls
+session_tmp=$tmpdir/agy-state-test
+export AGY_STATUSLINE_STATE_DIR=$session_tmp
+turn1='{"conversation_id": "test-conv-1", "context": {"input_tokens": 4096, "total_tokens": 1048576}, "cost": {"total_usd": 0.02}}'
+turn2_tool='{"conversation_id": "test-conv-1", "context": {"input_tokens": 3072, "total_tokens": 1048576}, "cost": {"total_usd": 0.04}}'
+out1=$(render_json "$turn1")
+out2=$(render_json "$turn2_tool")
+case_header "accumulated context during tool call" "$out2"
+want "turn 1 shows 4k"       "$out1" "ctx 4k/1049k"
+want "turn 2 preserves 4k"    "$out2" "ctx 4k/1049k"
+dont "turn 2 does not drop"   "$out2" "ctx 3k/1049k"
+want "turn 2 shows turn cost delta" "$out2" "+\$0.02"
+want "turn 2 shows total cost"      "$out2" "\$0.04"
+
+# 13. Session reset on new conversation_id (/clear)
+turn_new_conv='{"conversation_id": "test-conv-2", "context": {"input_tokens": 1024, "total_tokens": 1048576}, "cost": {"total_usd": 0.01}}'
+out3=$(render_json "$turn_new_conv")
+case_header "session reset on new conversation (/clear)" "$out3"
+want "new session resets context" "$out3" "ctx 1k/1049k"
+dont "does not carry over 4k"     "$out3" "ctx 4k/1049k"
+
 printf '\nstatusline-antigravity.sh: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1
+
