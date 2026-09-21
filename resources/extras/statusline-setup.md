@@ -54,13 +54,15 @@ simply re-baselines on its next render.
 
 ## Without cloning the repo (paste to claude)
 
-> First get the status line that you need:
-> ```sh
-> curl -o ~/statusline-command.sh https://raw.githubusercontent.com/MichaelDimmitt/scripts/master/resources/extras/statusline-command.sh
-> chmod +x ~/statusline-command.sh
-> ```
-> Next:
-> Use the `statusline-setup` agent to configure my statusLine from `~/statusline-command.sh`.
+> Install the status line from https://github.com/MichaelDimmitt/scripts.
+> 1. Download it:
+>    ```sh
+>    curl -o ~/statusline-command.sh https://raw.githubusercontent.com/MichaelDimmitt/scripts/master/resources/extras/statusline-command.sh
+>    chmod +x ~/statusline-command.sh
+>    ```
+> 2. Back up `~/.claude/settings.json`, then use the `statusline-setup` agent to set
+>    `statusLine` to `{"type":"command","command":"bash ~/statusline-command.sh","refreshInterval":30}`.
+> 3. It needs `jq`: check `which jq`, and `brew install jq` if it is missing.
 
 > **A standalone copy does not update when the repo does.** Re-run the `curl`
 > above after pulling changes, or fixes stay in the repo and never reach your
@@ -70,6 +72,21 @@ simply re-baselines on its next render.
 >
 > From a clone, `just install-statusline` does this for you and additionally
 > checks that `settings.json` points at the copy with `refreshInterval` set.
+
+## Comparing with other status lines (paste to claude)
+
+To weigh this against another status line before installing either — here
+[ccstatusline](https://github.com/sirmalloc/ccstatusline) — have an agent read
+both sources rather than trust a summary:
+
+> Compare two Claude Code status lines and recommend one for me:
+> - **This one:** https://github.com/MichaelDimmitt/scripts — read
+>   `resources/extras/statusline-command.sh` and `resources/extras/statusline-setup.md`.
+> - **ccstatusline:** https://github.com/sirmalloc/ccstatusline
+>
+> Compare install method and dependencies, what each one shows, how you
+> customize it, how it handles narrow terminals, whether it has tests, and how
+> it stays updated. Don't install anything yet.
 
 ## Settings
 
