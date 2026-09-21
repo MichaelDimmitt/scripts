@@ -2,7 +2,7 @@
 # Lookup file: how to open each SaaS AI tool from the command line
 # Format:  TOOL_NAME | LAUNCH_COMMAND
 # Lines starting with # are comments
-# Verified March 2026
+# Verified September 2026
 #
 # ── Web Interfaces (Desktop Apps) ──────────────────────────
 claude.ai (Anthropic)          | open -a Claude                                          # or: open https://claude.ai
@@ -11,6 +11,10 @@ Gemini (Google)                | open -a 'Google Gemini'                        
 Grok (xAI)                    | open -a Grok                                            # or: open https://grok.com
 #
 # ── AI-Powered IDEs ────────────────────────────────────────
+# Antigravity stays above the CLI entry below: the merge step matches on a
+# fixed substring and takes the first hit, so "Antigravity" must meet the app
+# line before it meets "Antigravity CLI (Google)".
+Antigravity                    | open -a Antigravity                                     # desktop app; install: brew install --cask antigravity
 Cursor                         | cursor .                                                # opens IDE in current dir; also: open -a Cursor
 Windsurf                       | windsurf .                                              # opens IDE in current dir; also: open -a Windsurf
 Zed                            | zed .                                                   # opens IDE in current dir; also: open -a Zed
@@ -21,7 +25,8 @@ Cursor CLI                     | agent                                          
 GitHub Copilot CLI             | github-copilot-cli
 GitHub CLI (Copilot extension) | gh copilot suggest                                      # or: gh copilot explain
 GitHub Copilot (gh extension)  | gh copilot suggest                                      # or: gh copilot explain
-Gemini CLI (Google)            | gemini                                                  # starts interactive session; also: gemini -p "prompt" for one-shot
+Antigravity CLI (Google)       | agy                                                     # interactive; also: agy -p "prompt"; install: curl -fsSL https://antigravity.google/cli/install.sh | bash
+Gemini CLI (Google)            | gemini                                                  # RETIRED 18 Jun 2026 for AI Pro/Ultra/free; enterprise seats only -- use agy
 Codex CLI (OpenAI)             | codex                                                   # starts interactive TUI; also: codex exec "prompt" for non-interactive
 OpenCode                       | opencode                                                # starts interactive TUI; also: opencode run "prompt" for one-shot
 Aider                          | aider                                                   # run in a git repo; also: aider --model sonnet

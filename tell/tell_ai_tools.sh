@@ -26,17 +26,25 @@ print_header() {
     echo "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
+# The optional trailing $note is a standing fact about the tool itself -- a
+# deprecation, a licensing restriction -- as distinct from $detail, which
+# reports what this machine happens to have. Both branches print it: "installed
+# but no longer served" and "gone, and not worth reaching for" are each worth
+# saying, and a note that appeared only on a hit would be missed by exactly the
+# reader deciding whether to install.
 check_found() {
     local name="$1"
     local detail="$2"
-    echo "  ${GREEN}✔ ${BOLD}$name${RESET}  ${detail}"
+    local note="$3"
+    echo "  ${GREEN}✔ ${BOLD}$name${RESET}  ${detail}${note:+  ${YELLOW}${note}${RESET}}"
     found_items+=("$name")
     ((found_count++))
 }
 
 check_not_found() {
     local name="$1"
-    echo "  ${RED}✘${RESET} $name"
+    local note="$2"
+    echo "  ${RED}✘${RESET} $name${note:+  ${note}}"
     ((not_found_count++))
 }
 
@@ -79,11 +87,17 @@ done
 
 # ----------------------------------------------------------
 #  2. AI-Powered IDEs (macOS apps)
-#     Ref: Cursor, Windsurf, Zed
+#     Ref: Antigravity, Cursor, Windsurf, Zed
+#
+#  Antigravity ships as a desktop app (Homebrew cask `antigravity`, artifact
+#  /Applications/Antigravity.app) separately from its CLI, which section 3
+#  detects. Having one installed says nothing about the other, so they are two
+#  independent checks rather than one.
 # ----------------------------------------------------------
 print_header "AI-Powered IDEs"
 
 declare -a ide_apps=(
+    "Antigravity:Antigravity"
     "Cursor:Cursor"
     "Windsurf:Windsurf"
     "Zed:Zed"
@@ -106,16 +120,32 @@ done
 # ----------------------------------------------------------
 #  3. CLI / Terminal Agents
 #     Ref: Claude Code, Cursor CLI, GitHub Copilot CLI,
-#          Gemini CLI, Codex CLI, OpenCode, Aider
+#          Antigravity CLI, Gemini CLI, Codex CLI, OpenCode, Aider
+#
+#  Google retired the Gemini CLI on 18 June 2026 and replaced it with the
+#  Antigravity CLI (`agy`). The Gemini CLI stays on this list rather than being
+#  deleted, because the retirement was by tier, not outright: Gemini Code Assist
+#  Standard/Enterprise seats and paid Gemini Agent Platform API keys are still
+#  served, while AI Pro, AI Ultra and free individual accounts are not. A
+#  detector that dropped the row would report nothing on the enterprise machines
+#  where it is still the right tool -- so it is annotated, not removed.
+#  Ref: developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/
 # ----------------------------------------------------------
 print_header "CLI / Terminal Agents"
 
+# Entries are CMD:DISPLAY_NAME, with an optional |NOTE appended. DISPLAY_NAME is
+# grepped against the launch lookup file further down, so the note has to sit
+# outside it. The separator is `|` rather than a third `:` so that the existing
+# two-field entries keep parsing unchanged -- a third colon would make
+# ${entry##*:} return the note instead of the name for annotated rows only,
+# which is the kind of split behaviour that goes unnoticed.
 declare -a cli_tools=(
     "claude:Claude Code (Anthropic)"
     "agent:Cursor CLI"
     "github-copilot-cli:GitHub Copilot CLI"
     "gh:GitHub CLI (Copilot extension)"
-    "gemini:Gemini CLI (Google)"
+    "agy:Antigravity CLI (Google)"
+    "gemini:Gemini CLI (Google)|retired 18 Jun 2026 — enterprise seats only; see agy"
     "codex:Codex CLI (OpenAI)"
     "opencode:OpenCode"
     "aider:Aider"
@@ -123,12 +153,17 @@ declare -a cli_tools=(
 
 for entry in "${cli_tools[@]}"; do
     cmd="${entry%%:*}"
-    display_name="${entry##*:}"
+    rest="${entry#*:}"
+    # Without a |NOTE, ${rest%%|*} is the whole display name and the guard below
+    # leaves $note empty -- no separate no-note branch needed.
+    display_name="${rest%%|*}"
+    note=""
+    [[ "$rest" == *"|"* ]] && note="${rest#*|}"
     if command -v "$cmd" &>/dev/null; then
         version=$($cmd --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+[0-9.]*' | head -1)
-        check_found "$display_name" "${version:+v$version}"
+        check_found "$display_name" "${version:+v$version}" "$note"
     else
-        check_not_found "$display_name"
+        check_not_found "$display_name" "$note"
     fi
 done
 
