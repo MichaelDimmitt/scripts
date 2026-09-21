@@ -33,6 +33,10 @@ tell-installed-skills:
 tell-statusline:
     bash tell/tell_statusline.sh
 
+# Explain every segment of the Antigravity status line, one line each
+tell-statusline-antigravity:
+    bash tell/tell_statusline_antigravity.sh
+
 # Generate shell aliases for every installed Homebrew cask
 generate-cask-aliases:
     bash generate/generate_cask-aliases.sh
@@ -44,6 +48,10 @@ install-checkout-release:
 # Copy the status line to ~/.claude and repoint settings.json if it runs an older copy
 install-statusline:
     bash install/install_statusline.sh
+
+# Copy the status line to ~/.gemini/antigravity-cli and configure settings.json
+install-statusline-antigravity:
+    bash install/install_statusline_antigravity.sh
 
 # Install cl/cx/cresume/cresumef aliases and source them from your shell RC
 install-aliases:
