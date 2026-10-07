@@ -450,14 +450,16 @@ bash generate/generate_cask-aliases.sh
 ---
 
 ### `bin/latest_release`
-Checks out the highest versioned `release/X.Y.Z` branch in the current repo. Fetches all remotes, filters to branches matching the `release/#.##.##` pattern, version-sorts them, and checks out the latest. Branches with non-version suffixes (e.g. `release/vite-config-updates`) are ignored.
+Checks out the highest numbered `release/` branch in the current repo. Fetches all remotes, keeps branches whose name after `release/` is only numbers joined by `.` or `-`, version-sorts them comparing each number left to right, and checks out the latest. Branches with non-numeric names (e.g. `release/vite-config-updates`) are ignored.
+
+Branch convention: `release/<version>-<sprint week>`, e.g. `release/1.00-02`, `release/1.00-04`, `release/1.01-02`. The script doesn't care what the parts mean, only that higher numbers win: `1.00-08` < `1.00-10` < `1.01-02`. Plain `release/X.Y.Z` branches still match.
 
 **Three ways to invoke:**
 
 ```sh
 latest_release                # direct (after install)
 git checkout-release          # git alias
-git checkout release          # shell function intercept (also matches release/; release/X.Y.Z passes through to git)
+git checkout release          # shell function intercept (also matches release/; release/1.00-02 passes through to git)
 ```
 
 **Install on a new machine:**
