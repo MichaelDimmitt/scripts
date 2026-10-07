@@ -32,6 +32,7 @@ Files follow a `verb_noun.sh` pattern in **snake_case**, grouped into folders by
 | `install/install_statusline_antigravity.sh` | install | Copy the status line to `~/.gemini/antigravity-cli`, and configure settings.json |
 | `install/install_prompt_skill.sh` | install | Install the cross-platform /prompt skill to Claude Code and Antigravity CLI |
 | `install/install_aliases.sh` | install | Install the hand-maintained shell aliases and source them from your shell RC |
+| `install/install_session_index.sh` | install | Copy the session-index skill to `~/.claude/skills` |
 | `check/check_conventions.sh` | check | Verify the installer contract, shebangs, exec bits, and library form |
 | `check/check_install.sh` | check | Install into a throwaway `$HOME` and assert the aliases are live in a fresh shell |
 | `bin/latest_release` | — | Checkout the highest versioned release branch |
@@ -63,6 +64,7 @@ just install-statusline
 just install-statusline-antigravity
 just install-prompt-skill
 just install-aliases
+just install-session-index
 just install-all            # every install-* script in one pass
 just check-conventions      # installer contract, shebangs, exec bits
 just lint                   # check-conventions, then shellcheck every script
@@ -348,6 +350,30 @@ thresholds and tuning.
   }
 }
 ```
+
+### Claude Code session index
+
+A skill that maintains a `SESSIONS.md` in a project: an append-only table of
+one-line summaries of past Claude Code sessions, plus a paragraph describing what
+the project is and where the work has been heading. Install with
+`just install-session-index`, then invoke it by asking Claude to index or
+summarize the project's past sessions.
+
+```sh
+# See how many sessions are unindexed before spending anything
+python3 ~/.claude/skills/session-index/session_index.py --dry-run
+
+# Index them
+python3 ~/.claude/skills/session-index/session_index.py
+```
+
+Rows are append-only and keyed by session UUID, so a `SESSIONS.md` synced through
+git keeps rows written on other machines. A UUID already in the table is never
+re-summarized; `--resummarize UUID` is the only override.
+
+Each summary costs one `claude -p` call on Haiku, so it is a skill rather than a
+hook: it runs when asked instead of firing unprompted in every project. Check
+`--dry-run` first on a repo with a long history, and use `--limit N` to cap a run.
 
 ---
 
