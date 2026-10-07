@@ -61,6 +61,10 @@ install-prompt-skill:
 install-aliases:
     bash install/install_aliases.sh
 
+# Copy the session-index skill to ~/.claude/skills
+install-session-index:
+    bash install/install_session_index.sh
+
 # Run every install-* script in one pass
 install-all:
     bash install/install_all.sh
@@ -84,4 +88,3 @@ test-statusline:
 # Run the Antigravity status line test suite
 test-statusline-antigravity:
     bash resources/extras/statusline-tests/run-antigravity-tests.sh
-
